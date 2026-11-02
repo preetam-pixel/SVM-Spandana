@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { Activity, BookOpenCheck, CalendarDays, ClipboardList, Contact, Flag, Medal, Menu, Radio, Sparkles, Stamp, Trophy, UserRound, Users, UsersRound, VenetianMask, X } from "lucide-react";
+import { Activity, ArrowRight, BookOpenCheck, CalendarDays, Contact, Flag, Medal, Menu, ShieldCheck, Sparkles, Stamp, Trophy, UserRound, Users, UsersRound, VenetianMask, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -12,27 +12,31 @@ import { LADDER } from "@/lib/data";
 import { useStore } from "@/lib/store";
 import type { DisciplineId } from "@/lib/types";
 
+// The four everyday pages; on phones these are the bottom tabs.
 const PRIMARY = [
   { href: "/home", label: "Pulse", icon: Activity },
   { href: "/events", label: "Events", icon: CalendarDays },
   { href: "/stage", label: "Mask Mode", icon: VenetianMask },
   { href: "/people", label: "People", icon: UsersRound },
 ];
-const SECONDARY = [
-  { href: "/squads", label: "Squads", icon: Users },
-  { href: "/opportunities", label: "Opportunities", icon: Flag },
-  { href: "/achievements", label: "Achievements", icon: Trophy },
-  { href: "/club", label: "SVM Club", icon: Medal },
-  { href: "/guru", label: "Guru", icon: Sparkles },
-  { href: "/passport", label: "Passport", icon: Stamp },
-  { href: "/team", label: "SVM Team", icon: Contact },
-  { href: "/profile", label: "Profile", icon: UserRound },
+// Everything else, grouped so the menu reads at a glance.
+const GROUPS = [
+  { title: "Grow", items: [
+    { href: "/opportunities", label: "Opportunities", icon: Flag },
+    { href: "/squads", label: "Squads", icon: Users },
+    { href: "/guru", label: "Guru", icon: Sparkles },
+  ] },
+  { title: "You", items: [
+    { href: "/passport", label: "Passport", icon: Stamp },
+    { href: "/achievements", label: "Achievements", icon: Trophy },
+    { href: "/profile", label: "Profile", icon: UserRound },
+  ] },
+  { title: "SVM", items: [
+    { href: "/club", label: "SVM Club", icon: Medal },
+    { href: "/team", label: "SVM Team", icon: Contact },
+  ] },
 ];
-const CORE_LINK = { href: "/core", label: "Core Dashboard", icon: ClipboardList };
-const EXTRA = [
-  { href: "/cockpit", label: "Organizer Cockpit", icon: BookOpenCheck },
-  { href: "/live", label: "Live Stage", icon: Radio },
-];
+const SECONDARY = GROUPS.flatMap((g) => g.items);
 
 // Pages that work before the Creative Spark is taken (and everything under them).
 const OPEN_BEFORE_SPARK = ["/profile", "/team", "/people", "/u", "/events", "/achievements", "/opportunities", "/club"];
@@ -127,24 +131,26 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
     <div className="min-h-dvh pb-24 lg:pb-0 lg:pl-60">
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col border-r border-line bg-night/90 p-5 backdrop-blur-xl lg:flex">
         <Logo small />
-        <nav className="mt-8 space-y-1">
-          {[...PRIMARY, ...SECONDARY].map((n) => (
-            <Link key={n.href} href={n.href} className={cx("flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition", isActive(path, n.href) ? "bg-iris text-white shadow-md shadow-iris/20" : "text-mute hover:bg-fg/5 hover:text-fg")}>
-              <n.icon size={18} /> {n.label}
-              {badgeFor(n.href) > 0 && <span className="ml-auto rounded-full bg-magenta px-1.5 text-[11px] font-bold text-white">{badgeFor(n.href)}</span>}
-            </Link>
+        <nav className="mt-6 flex-1 space-y-5 overflow-y-auto pr-1">
+          <div className="space-y-0.5">
+            {PRIMARY.map((n) => <SideLink key={n.href} n={n} active={isActive(path, n.href)} badge={badgeFor(n.href)} />)}
+          </div>
+          {GROUPS.map((g) => (
+            <div key={g.title} className="space-y-0.5">
+              <div className="px-3 pb-1 text-[10px] font-bold uppercase tracking-[0.16em] text-mute/80">{g.title}</div>
+              {g.items.map((n) => <SideLink key={n.href} n={n} active={isActive(path, n.href)} badge={badgeFor(n.href)} />)}
+            </div>
           ))}
         </nav>
-        <div className="mt-auto space-y-3">
+        <div className="mt-4 space-y-3">
           {account.role === "core" && (
-            <Link href="/core" className="flex items-center gap-2 rounded-xl grad-bg px-3 py-2.5 text-xs font-semibold"><ClipboardList size={15} /> Core Dashboard</Link>
+            <Link href="/core" className="flex items-center gap-2 rounded-xl core-bg px-3 py-2.5 text-xs font-semibold hover:brightness-125"><ShieldCheck size={15} className="text-sand" /> Core workspace <ArrowRight size={13} className="ml-auto" /></Link>
           )}
-          <Link href="/cockpit" className="flex items-center gap-2 rounded-xl border border-line px-3 py-2.5 text-xs text-mute hover:text-fg"><BookOpenCheck size={15} /> Organizer Cockpit</Link>
           <Link href="/profile" className="flex items-center gap-3 rounded-xl border border-line bg-white p-3 hover:bg-panel2/50">
             <Avatar name={account.name} src={account.avatar} />
             <div className="min-w-0">
               <div className="truncate text-sm font-semibold">{account.name}</div>
-              <div className="text-xs text-mute">{account.role === "core" ? "SVM Core" : rung.name} · {account.dept} {account.year} yr</div>
+              <div className="flex items-center gap-1 text-xs text-mute">{account.role === "core" && <ShieldCheck size={11} className="text-gold" />}{account.role === "core" ? "SVM Core" : rung.name} · {account.dept} {account.year} yr</div>
             </div>
           </Link>
         </div>
@@ -195,17 +201,36 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
                 <span className="font-display text-lg font-semibold">More</span>
                 <button onClick={() => setMore(false)} className="rounded-full p-1.5 text-mute hover:bg-fg/5" aria-label="Close"><X size={18} /></button>
               </div>
-              <div className="grid grid-cols-3 gap-2">
-                {[...SECONDARY, ...(account.role === "core" ? [CORE_LINK] : []), ...EXTRA].map((n) => (
-                  <Link key={n.href} href={n.href} className={cx("flex flex-col items-center gap-1.5 rounded-2xl border p-3 text-center text-xs font-medium", isActive(path, n.href) ? "border-iris bg-iris text-white" : "border-line bg-white text-fg")}>
-                    <n.icon size={20} /> {n.label}
-                  </Link>
+              <div className="space-y-4">
+                {GROUPS.map((g) => (
+                  <div key={g.title}>
+                    <div className="mb-1.5 text-[10px] font-bold uppercase tracking-[0.16em] text-mute">{g.title}</div>
+                    <div className="grid grid-cols-3 gap-2">
+                      {g.items.map((n) => (
+                        <Link key={n.href} href={n.href} className={cx("flex flex-col items-center gap-1.5 rounded-2xl border p-3 text-center text-xs font-medium", isActive(path, n.href) ? "border-iris bg-iris text-white" : "border-line bg-white text-fg")}>
+                          <n.icon size={20} /> {n.label}
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
                 ))}
+                {account.role === "core" && (
+                  <Link href="/core" className="flex items-center gap-2 rounded-2xl core-bg px-4 py-3 text-sm font-semibold"><ShieldCheck size={18} className="text-sand" /> Core workspace <ArrowRight size={15} className="ml-auto" /></Link>
+                )}
               </div>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
     </div>
+  );
+}
+
+function SideLink({ n, active, badge }: { n: (typeof PRIMARY)[number]; active: boolean; badge: number }) {
+  return (
+    <Link href={n.href} className={cx("flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition", active ? "bg-iris text-white shadow-md shadow-iris/20" : "text-mute hover:bg-fg/5 hover:text-fg")}>
+      <n.icon size={17} /> {n.label}
+      {badge > 0 && <span className="ml-auto rounded-full bg-magenta px-1.5 text-[11px] font-bold text-white">{badge}</span>}
+    </Link>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  Camera, Clapperboard, Drama, Drum, Feather, Footprints, Megaphone, Mic, Palette, Sparkles, type LucideIcon,
+  BadgeCheck, Camera, Clapperboard, Drama, Drum, Feather, Footprints, Megaphone, Mic, Palette, ShieldCheck, Sparkles, type LucideIcon,
 } from "lucide-react";
 import { DISC_MAP } from "@/lib/data";
 import type { DisciplineId } from "@/lib/types";
@@ -17,7 +17,8 @@ export function cx(...c: (string | false | null | undefined)[]) {
   return c.filter(Boolean).join(" ");
 }
 
-type BtnProps = React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: "primary" | "soft" | "ghost"; size?: "sm" | "md" | "lg" };
+// "core" marks actions only SVM core members can take, so they never look like member actions.
+type BtnProps = React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: "primary" | "soft" | "ghost" | "core"; size?: "sm" | "md" | "lg" };
 
 export function Button({ variant = "primary", size = "md", className, ...rest }: BtnProps) {
   return (
@@ -31,9 +32,45 @@ export function Button({ variant = "primary", size = "md", className, ...rest }:
         variant === "primary" && "grad-bg text-white shadow-lg shadow-iris/25 hover:brightness-110",
         variant === "soft" && "bg-fg/8 text-fg border border-line hover:bg-fg/12",
         variant === "ghost" && "text-mute hover:text-fg hover:bg-fg/5",
+        variant === "core" && "core-bg shadow-md shadow-fg/20 hover:brightness-125",
         className,
       )}
     />
+  );
+}
+
+/** Small dark tag for anything only SVM core members see. */
+export function CoreTag({ children = "Core only", className }: { children?: React.ReactNode; className?: string }) {
+  return (
+    <span className={cx("inline-flex items-center gap-1 rounded-full core-bg px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider", className)}>
+      <ShieldCheck size={11} /> {children}
+    </span>
+  );
+}
+
+/** Card for core-only tools inside member pages: dark edge and a "Core only" tag so it reads as organiser space. */
+export function CorePanel({ title, sub, children, className }: { title: string; sub?: string; children: React.ReactNode; className?: string }) {
+  return (
+    <section className={cx("card overflow-hidden border-fg/25 p-0", className)}>
+      <div className="flex flex-wrap items-center justify-between gap-2 core-bg px-5 py-3">
+        <div>
+          <div className="font-display text-base font-semibold">{title}</div>
+          {sub && <div className="text-xs text-sand/80">{sub}</div>}
+        </div>
+        <span className="inline-flex items-center gap-1 rounded-full border border-sand/40 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-sand"><ShieldCheck size={11} /> Core only</span>
+      </div>
+      <div className="p-5">{children}</div>
+    </section>
+  );
+}
+
+/** Gold ribbon for a work endorsed by SVM core. */
+export function CorePickRibbon({ by, note }: { by: string; note?: string }) {
+  return (
+    <div className="border-b border-gold/30 bg-gradient-to-r from-sand/40 to-sand/10 px-4 py-2">
+      <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-gold"><BadgeCheck size={14} /> SVM Core Pick</div>
+      <div className="mt-0.5 text-xs text-fg/80">{note ? <>“{note}” <span className="text-mute">— {by}</span></> : <>Endorsed by {by}</>}</div>
+    </div>
   );
 }
 

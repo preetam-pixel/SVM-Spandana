@@ -1,14 +1,13 @@
 "use client";
 
 import {
-  AlertTriangle, ArrowLeft, ArrowRight, BarChart3, CalendarDays, CalendarPlus, CheckCircle2, Flag, Gauge, Info, KeyRound, Medal,
+  AlertTriangle, ArrowRight, BarChart3, CalendarDays, CalendarPlus, CheckCircle2, Flag, Info, KeyRound, Medal,
   ShieldCheck, Sparkles, Trophy, UserPlus, Users,
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { Logo } from "@/components/Logo";
-import { Avatar, Badge, Card, DiscIcon, SectionHead, Shimmer, cx } from "@/components/ui";
+import { Avatar, Badge, Button, Card, DiscIcon, SectionHead, Shimmer, cx } from "@/components/ui";
 import { daysUntil, fmtDate } from "@/lib/opportunities";
 import type { CoreDashboard } from "@/lib/types";
 
@@ -40,29 +39,18 @@ export default function CoreDashboardPage() {
   }, []);
 
   return (
-    <div className="min-h-dvh">
-      <header className="sticky top-0 z-20 border-b border-line bg-ink/80 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
-          <div className="flex items-center gap-4">
-            <Logo small />
-            <span className="hidden h-6 w-px bg-line sm:block" />
-            <div>
-              <div className="font-display text-sm font-semibold">Core Dashboard</div>
-              <div className="text-[11px] text-mute">SVM coordinators & core team</div>
-            </div>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge color="#4f7b5f"><span className="h-1.5 w-1.5 rounded-full bg-aqua" /> Live data</Badge>
-            <Link href="/events" className="flex items-center gap-1 rounded-full grad-bg px-3 py-1.5 text-xs font-semibold"><CalendarPlus size={13} /> Post event</Link>
-            <Link href="/cockpit" className="hidden items-center gap-1 rounded-full border border-line px-3 py-1.5 text-xs hover:bg-fg/5 sm:flex"><Gauge size={13} /> Cockpit</Link>
-            <Link href="/home" className="flex items-center gap-1 rounded-full border border-line px-3 py-1.5 text-xs hover:bg-fg/5"><ArrowLeft size={13} /> Student view</Link>
-          </div>
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="font-display text-2xl font-bold">Dashboard</h1>
+          <p className="text-sm text-mute">Live numbers for SVM: members, events, check-ins and fest interest.</p>
         </div>
-      </header>
-
-      <main className="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6">
-        {error ? <Blocked {...error} /> : !data ? <Loading /> : <Dashboard d={data} />}
-      </main>
+        <div className="flex items-center gap-2">
+          <Badge color="#4f7b5f"><span className="h-1.5 w-1.5 rounded-full bg-aqua" /> Live data</Badge>
+          <Link href="/core/events/new"><Button size="sm" variant="core"><CalendarPlus size={14} /> Post event</Button></Link>
+        </div>
+      </div>
+      {error ? <Blocked {...error} /> : !data ? <Loading /> : <Dashboard d={data} />}
     </div>
   );
 }

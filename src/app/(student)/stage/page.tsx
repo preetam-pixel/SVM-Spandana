@@ -1,10 +1,10 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Camera, Clapperboard, Feather, Heart, Music, Play, Send, ShieldCheck, Sparkles, UploadCloud, VenetianMask, X } from "lucide-react";
+import { BadgeCheck, Camera, Clapperboard, Feather, Heart, Music, Play, Send, ShieldCheck, Sparkles, UploadCloud, VenetianMask, X } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { AiTag, Badge, Button, Card, SectionHead, Shimmer, cx } from "@/components/ui";
+import { AiTag, Badge, Button, Card, CorePickRibbon, SectionHead, Shimmer, cx } from "@/components/ui";
 import { askAI } from "@/lib/ai";
 import { noteFreq, playNotes } from "@/lib/audio";
 import { useStore } from "@/lib/store";
@@ -32,6 +32,7 @@ const total = (p: MaskPost) => p.reactions.heart + p.reactions.fire + p.reaction
 export default function StagePage() {
   const { addContribution, toast } = useStore();
   const [posts, setPosts] = useState<MaskPost[] | null>(null);
+  const [core, setCore] = useState(false);
   const [kind, setKind] = useState<Kind>("photo");
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -42,9 +43,15 @@ export default function StagePage() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(() => {
-    fetch("/api/posts").then((r) => r.json()).then((d) => setPosts(d.posts)).catch(() => setPosts([]));
+    fetch("/api/posts").then((r) => r.json()).then((d) => { setPosts(d.posts ?? []); setCore(!!d.core); }).catch(() => setPosts([]));
   }, []);
   useEffect(load, [load]);
+
+  // Links to a post (from Core Picks on the home page) scroll to it once the showcase has loaded.
+  useEffect(() => {
+    if (!posts || !location.hash.startsWith("#post-")) return;
+    document.getElementById(location.hash.slice(1))?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [posts]);
 
   useEffect(() => () => { if (preview) URL.revokeObjectURL(preview); }, [preview]);
 
@@ -113,7 +120,24 @@ export default function StagePage() {
     load();
   };
 
+  const endorse = async (p: MaskPost, note: string | null) => {
+    const res = await fetch(`/api/posts/${p.id}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(note === null ? { action: "unendorse" } : { action: "endorse", note }),
+    });
+    const d = (await res.json()) as { error?: string };
+    if (!res.ok) return toast(d.error ?? "Couldn't update the endorsement", "error");
+    toast(note === null ? `“${p.title}” removed from Core Picks` : `“${p.title}” is now an SVM Core Pick`, note === null ? "info" : "level");
+    load();
+  };
+
   const mine = (posts ?? []).filter((p) => p.mine);
+  const picks = (posts ?? []).filter((p) => p.endorsement).sort((a, b) => b.endorsement!.at - a.endorsement!.at);
+  const rest = (posts ?? []).filter((p) => !p.endorsement);
+  const card = (p: MaskPost) => (
+    <PostCard key={p.id} p={p} core={core} onEndorse={(n) => endorse(p, n)} onReact={(k) => react(p.id, k)} onComment={(c) => comment(p.id, c)} onUnmask={() => unmask(p)} onRemask={() => remask(p)} />
+  );
   const meta = KINDS.find((k) => k.id === kind)!;
   const canPost = progress === null && (kind === "text" ? text.trim().length > 2 : !!file);
 
@@ -183,12 +207,19 @@ export default function StagePage() {
           <div className="mt-3 flex justify-end"><Button disabled={!canPost} onClick={post}><VenetianMask size={16} /> Post anonymously</Button></div>
         </Card>
 
+        {picks.length > 0 && (
+          <section>
+            <SectionHead title="SVM Core Picks" sub="Work the SVM core team loved. Creators stay anonymous until they unmask." right={<BadgeCheck className="shrink-0 text-gold" size={22} />} />
+            <div className="grid gap-4 sm:grid-cols-2">{picks.map(card)}</div>
+          </section>
+        )}
+
         <section>
           <SectionHead title="Masked showcase" sub="Work from classmates you haven't met yet" />
-          {!posts ? <Shimmer lines={4} /> : (
-            <div className="grid gap-4 sm:grid-cols-2">
-              {posts.map((p) => <PostCard key={p.id} p={p} onReact={(k) => react(p.id, k)} onComment={(c) => comment(p.id, c)} onUnmask={() => unmask(p)} onRemask={() => remask(p)} />)}
-            </div>
+          {!posts ? <Shimmer lines={4} /> : rest.length === 0 ? (
+            <p className="text-sm text-mute">Nothing here yet. Be the first to share something.</p>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2">{rest.map(card)}</div>
           )}
         </section>
       </div>
@@ -231,8 +262,10 @@ export default function StagePage() {
   );
 }
 
-function PostCard({ p, onReact, onComment, onUnmask, onRemask }: {
+function PostCard({ p, core, onEndorse, onReact, onComment, onUnmask, onRemask }: {
   p: MaskPost;
+  core: boolean;
+  onEndorse: (note: string | null) => void;
   onReact: (k: keyof MaskPost["reactions"]) => void;
   onComment: (c: string) => Promise<void>;
   onUnmask: () => void;
@@ -241,6 +274,8 @@ function PostCard({ p, onReact, onComment, onUnmask, onRemask }: {
   const [c, setC] = useState("");
   const [checking, setChecking] = useState(false);
   const [hint, setHint] = useState<{ suggestion: string; source: string } | null>(null);
+  const [endorsing, setEndorsing] = useState(false);
+  const [note, setNote] = useState("");
 
   const send = async () => {
     setChecking(true);
@@ -254,7 +289,8 @@ function PostCard({ p, onReact, onComment, onUnmask, onRemask }: {
   };
 
   return (
-    <div className="card flex flex-col overflow-hidden">
+    <div id={`post-${p.id}`} className={cx("card flex flex-col overflow-hidden", p.endorsement && "core-pick")}>
+      {p.endorsement && <CorePickRibbon by={p.endorsement.by} note={p.endorsement.note} />}
       {p.kind === "photo" && p.media && <img src={p.media} alt={p.title} className="max-h-72 w-full bg-panel2 object-cover" loading="lazy" />}
       {p.kind === "video" && p.media && <video src={p.media} controls playsInline preload="metadata" className="max-h-80 w-full bg-black" />}
       {(p.kind === "sketch" || p.kind === "scene") && <MaskArt kind={p.kind} seed={p.seed ?? 1} />}
@@ -303,6 +339,23 @@ function PostCard({ p, onReact, onComment, onUnmask, onRemask }: {
           <input value={c} onChange={(e) => setC(e.target.value)} onKeyDown={(e) => e.key === "Enter" && c.trim() && send()} placeholder="Say something kind…" className="min-w-0 flex-1 rounded-full border border-line bg-white px-3 py-1.5 text-xs outline-none focus:border-iris/50" />
           <button disabled={!c.trim() || checking} onClick={send} className="grid h-8 w-8 place-items-center rounded-full grad-bg disabled:opacity-40" aria-label="Send"><Send size={13} /></button>
         </div>
+        {core && !p.mine && (
+          <div className="mt-3 border-t border-dashed border-fg/15 pt-3">
+            {p.endorsement ? (
+              <button onClick={() => onEndorse(null)} className="text-[11px] font-semibold text-mute hover:text-magenta">Remove from Core Picks</button>
+            ) : endorsing ? (
+              <div className="space-y-2">
+                <input autoFocus value={note} onChange={(e) => setNote(e.target.value)} maxLength={140} placeholder="A note to the creator (optional)" className="w-full rounded-full border border-fg/25 bg-white px-3 py-1.5 text-xs outline-none focus:border-fg/50" />
+                <div className="flex gap-2">
+                  <Button size="sm" variant="core" onClick={() => { onEndorse(note); setEndorsing(false); setNote(""); }}><BadgeCheck size={14} /> Endorse</Button>
+                  <Button size="sm" variant="ghost" onClick={() => setEndorsing(false)}>Cancel</Button>
+                </div>
+              </div>
+            ) : (
+              <Button size="sm" variant="core" onClick={() => setEndorsing(true)}><BadgeCheck size={14} /> Endorse as SVM Core</Button>
+            )}
+          </div>
+        )}
         {hint && (
           <div className="mt-2 rounded-xl border border-gold/30 bg-sand/20 p-2.5 text-xs">
             <div className="mb-1 flex items-center justify-between"><span className="font-semibold text-gold">Let's keep it kind 💛</span><AiTag source={hint.source} /></div>

@@ -71,7 +71,7 @@ export default function ClubPage() {
         <SectionHead
           title="Trophy cabinet"
           sub="Fests, competitions and stages SVM members have represented the club at"
-          right={data.core && <Button size="sm" onClick={() => setAdding(true)}><Plus size={14} /> Add trophy</Button>}
+          right={data.core && <Button size="sm" variant="core" onClick={() => setAdding(true)}><Plus size={14} /> Add trophy</Button>}
         />
         {data.trophies.length === 0 ? (
           <Card className="py-10 text-center">
@@ -81,7 +81,7 @@ export default function ClubPage() {
               {data.core ? "Add SVM's past wins (fests, VTU Youth Festival, inter-college events) so new members can see what the club has achieved." : "Represent SVM at a fest. Check Opportunities to raise your hand for the next one."}
             </p>
             <div className="mt-4 flex justify-center gap-2">
-              {data.core ? <Button onClick={() => setAdding(true)}><Plus size={15} /> Add the first trophy</Button> : <Link href="/opportunities"><Button>See opportunities</Button></Link>}
+              {data.core ? <Button variant="core" onClick={() => setAdding(true)}><Plus size={15} /> Add the first trophy</Button> : <Link href="/opportunities"><Button>See opportunities</Button></Link>}
             </div>
           </Card>
         ) : (

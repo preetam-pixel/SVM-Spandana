@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { CalendarDays, Check, ExternalLink, Flag, Info, MapPin, Pencil, Plus, Sparkles, Trash2, Users, X } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { Avatar, Badge, Button, Card, DiscIcon, Kn, SectionHead, Shimmer, cx } from "@/components/ui";
+import { Avatar, Badge, Button, Card, CoreTag, DiscIcon, Kn, SectionHead, Shimmer, cx } from "@/components/ui";
 import { DISCIPLINES } from "@/lib/data";
 import { LEVELS, LEVEL_LABEL, OPP_KINDS, daysUntil, fmtDate, isGoodFit } from "@/lib/opportunities";
 import { useStore } from "@/lib/store";
@@ -45,7 +45,7 @@ export default function OpportunitiesPage() {
               </p>
             </div>
           </div>
-          {data.core && <Button className="self-start" onClick={() => setEditing("new")}><Plus size={15} /> Post opportunity</Button>}
+          {data.core && <Button variant="core" className="self-start" onClick={() => setEditing("new")}><Plus size={15} /> Post opportunity</Button>}
         </div>
       </section>
 
@@ -177,8 +177,11 @@ function OpportunityCard({ o, i, core, onChange, onEdit, onDeleted }: {
       )}
 
       {core && o.interested > 0 && (
-        <div className="mt-4 border-t border-line pt-3">
-          <button onClick={showPeople} className="text-sm font-semibold text-iris hover:underline">{people ? "Hide" : "See"} who&apos;s interested ({o.interested})</button>
+        <div className="mt-4 border-t border-dashed border-fg/20 pt-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <CoreTag />
+            <button onClick={showPeople} className="text-sm font-semibold text-iris hover:underline">{people ? "Hide" : "See"} who&apos;s interested ({o.interested})</button>
+          </div>
           {people && (
             <div className="mt-3 grid gap-2 sm:grid-cols-2">
               {people.map((p) => (

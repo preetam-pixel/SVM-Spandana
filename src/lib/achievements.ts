@@ -37,6 +37,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { id: "unmasked", name: "Unmasked", desc: "Reveal yourself as the creator of a work", icon: "VenetianMask", tier: "silver", category: "showcase", stat: "unmasked", goal: 1 },
   { id: "applause", name: "Applause", desc: "Receive 25 reactions on your works", icon: "Heart", tier: "silver", category: "showcase", stat: "reactions", goal: 25 },
   { id: "crowd-favourite", name: "Crowd Favourite", desc: "Receive 100 reactions on your works", icon: "Flame", tier: "gold", category: "showcase", stat: "reactions", goal: 100 },
+  { id: "core-pick", name: "Core Pick", desc: "Have a work endorsed by SVM core", icon: "BadgeCheck", tier: "gold", category: "showcase", stat: "endorsed", goal: 1 },
   { id: "kind-voice", name: "Kind Voice", desc: "Leave 5 kind comments on classmates' work", icon: "MessageCircleHeart", tier: "bronze", category: "showcase", stat: "comments", goal: 5 },
   // Events
   { id: "first-step", name: "First Step", desc: "Sign up for an SVM event", icon: "Ticket", tier: "bronze", category: "events", stat: "signups", goal: 1 },
@@ -64,7 +65,7 @@ export const ACHIEVEMENT_MAP = Object.fromEntries(ACHIEVEMENTS.map((a) => [a.id,
 
 export const EMPTY_STATS: Stats = {
   sparkDone: false, stamps: 0, quests: 0, posts: 0, unmasked: 0, reactions: 0, comments: 0, friends: 0,
-  signups: 0, attended: 0, crew: 0, stage: 0, stars: 0, recognitions: 0, hosted: 0, biggestEvent: 0, interests: 0, trophies: 0,
+  signups: 0, attended: 0, crew: 0, stage: 0, stars: 0, recognitions: 0, hosted: 0, biggestEvent: 0, interests: 0, trophies: 0, endorsed: 0,
 };
 
 export interface Progress {
