@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { NotConfigured, supabaseAuth } from "@/lib/supabase/server";
 import { accountById } from "./db";
-import { FriendsNotSetUp } from "./people";
+import { SetupNeeded } from "./setup";
 import type { Account } from "@/lib/types";
 
 /** Accepts 10-digit Indian mobiles (with or without +91 / 0) and returns E.164, or null. */
@@ -20,7 +20,7 @@ export async function currentUser(): Promise<Account | null> {
 
 /** Turns setup/unknown errors into a JSON response instead of a 500 page. */
 export function failure(e: unknown) {
-  if (e instanceof NotConfigured || e instanceof FriendsNotSetUp) return NextResponse.json({ error: e.message, setup: true }, { status: 503 });
+  if (e instanceof NotConfigured || e instanceof SetupNeeded) return NextResponse.json({ error: e.message, setup: true }, { status: 503 });
   if (e instanceof SyntaxError) return NextResponse.json({ error: "Invalid request" }, { status: 400 }); // malformed JSON body
   console.error("[api]", e);
   const msg = e && typeof e === "object" && "message" in e ? String((e as { message: unknown }).message) : "Something went wrong";

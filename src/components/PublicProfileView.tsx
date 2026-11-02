@@ -1,21 +1,41 @@
 "use client";
 
-import { Info, Instagram, Lock, Mail, Music, Youtube } from "lucide-react";
+import { Award, Info, Instagram, Lock, Mail, Music, ShieldCheck, ShieldMinus, Trophy, Youtube } from "lucide-react";
+import Link from "next/link";
+import { useState } from "react";
+import { MedalRow } from "@/components/AchievementBadge";
 import { DnaRadar } from "@/components/DnaRadar";
 import { FriendButton } from "@/components/FriendButton";
-import { Avatar, Badge, Card, DiscIcon, Kn, SectionHead, cx } from "@/components/ui";
+import { RecognizeDialog } from "@/components/RecognizeDialog";
+import { Avatar, Badge, Button, Card, DiscIcon, Kn, SectionHead, cx } from "@/components/ui";
 import { DIM_MAP, DISCIPLINES, LADDER } from "@/lib/data";
+import { recognitionEmoji } from "@/lib/club";
 import { archetype } from "@/lib/engine";
+import { patchJSON, postJSON } from "@/lib/events-client";
+import { useStore } from "@/lib/store";
 import type { FriendStatus, MaskPost, PublicProfile } from "@/lib/types";
 
-export function PublicProfileView({ person, status, friends, mutual, works }: {
+export function PublicProfileView({ person, status, friends, mutual, works, canRecognise, canChangeRole, onChanged }: {
   person: PublicProfile;
   status: FriendStatus;
   friends?: number;
   mutual?: number;
   works?: MaskPost[];
+  canRecognise?: boolean; // the viewer is an SVM core member
+  canChangeRole?: boolean; // ...and not the shared demo organiser
+  onChanged?: () => void;
 }) {
+  const { toast } = useStore();
+  const [recognising, setRecognising] = useState(false);
   const rung = LADDER[person.level] ?? LADDER[0];
+  const first = person.name.split(" ")[0];
+  const setRole = async (role: "core" | "member") => {
+    if (!confirm(role === "core" ? `Make ${first} an SVM core member? They'll be able to post events and notices and recognise members.` : `Remove ${first} from the SVM core team?`)) return;
+    const err = await patchJSON(`/api/people/${person.id}`, { role });
+    if (err) return toast(err, "error");
+    toast(role === "core" ? `${first} is now an SVM core member` : `${first} is a member again`, "info");
+    onChanged?.();
+  };
   return (
     <div className="space-y-6">
       {person.demo && (
@@ -33,6 +53,7 @@ export function PublicProfileView({ person, status, friends, mutual, works }: {
             <h1 className="font-display text-2xl font-bold">{person.name}</h1>
             <div className="mt-0.5 text-sm text-mute">{person.dept} · Year {person.year}{person.usn ? ` · ${person.usn}` : ""}</div>
             <div className="mt-2 flex flex-wrap gap-2">
+              {person.role === "core" && <Badge color="#8b3a3a"><ShieldCheck size={11} /> SVM Core</Badge>}
               <Badge color="#5c3a21">{rung.name} <Kn>{rung.kn}</Kn></Badge>
               {person.sparkDone && <Badge color="#a87a26">{archetype(person.dna)}</Badge>}
               {friends !== undefined && <Badge>{friends} friend{friends === 1 ? "" : "s"}{mutual ? ` · ${mutual} mutual` : ""}</Badge>}
@@ -40,6 +61,7 @@ export function PublicProfileView({ person, status, friends, mutual, works }: {
           </div>
           <div className="flex w-full items-center justify-between gap-3 sm:w-auto">
             <div className="flex gap-2 text-center">
+              {person.achievements && <div className="rounded-xl bg-panel2/60 px-3 py-2"><div className="font-display text-xl font-bold">{person.achievements.length}</div><div className="text-[11px] text-mute">badges</div></div>}
               <div className="rounded-xl bg-panel2/60 px-3 py-2"><div className="font-display text-xl font-bold">{person.points}</div><div className="text-[11px] text-mute">points</div></div>
               <div className="rounded-xl bg-panel2/60 px-3 py-2"><div className="font-display text-xl font-bold">{person.stamps.length}/9</div><div className="text-[11px] text-mute">stamps</div></div>
             </div>
@@ -47,6 +69,41 @@ export function PublicProfileView({ person, status, friends, mutual, works }: {
           </div>
         </div>
       </section>
+
+      {canRecognise && !person.demo && (
+        <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-iris/25 bg-white/70 p-3">
+          <span className="mr-auto text-xs font-semibold uppercase tracking-wider text-mute">Core member tools</span>
+          <Button size="sm" onClick={() => setRecognising(true)}><Award size={14} /> Recognise {first}</Button>
+          {canChangeRole && (person.role === "core" ? (
+            <Button size="sm" variant="ghost" onClick={() => setRole("member")}><ShieldMinus size={14} /> Remove from core</Button>
+          ) : (
+            <Button size="sm" variant="soft" onClick={() => setRole("core")}><ShieldCheck size={14} /> Make core member</Button>
+          ))}
+        </div>
+      )}
+
+      {!person.demo && ((person.achievements?.length ?? 0) > 0 || (person.recognitions?.length ?? 0) > 0) && (
+        <div className="grid gap-6 lg:grid-cols-2">
+          <Card>
+            <SectionHead title="Achievements" right={<Link href="/achievements" className="text-xs text-mute hover:text-fg">All badges →</Link>} />
+            {person.achievements?.length ? <MedalRow ids={person.achievements} /> : <p className="text-sm text-mute">No badges yet.</p>}
+          </Card>
+          <Card>
+            <SectionHead title="Recognitions" sub="From the SVM core team" />
+            {person.recognitions?.length ? (
+              <div className="space-y-3">
+                {person.recognitions.slice(0, 4).map((r) => (
+                  <div key={r.id} className="rounded-2xl bg-sand/15 p-3">
+                    <div className="text-sm font-semibold">{recognitionEmoji(r.title)} {r.title}{r.eventTitle && r.eventId ? <span className="font-normal text-mute"> · <Link href={`/events/${r.eventId}`} className="hover:underline">{r.eventTitle}</Link></span> : null}</div>
+                    {r.message && <p className="mt-0.5 text-sm italic text-fg/80">“{r.message}”</p>}
+                    <div className="mt-1 text-[11px] text-mute">by {r.by} · {new Date(r.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</div>
+                  </div>
+                ))}
+              </div>
+            ) : <p className="flex items-center gap-2 text-sm text-mute"><Trophy size={14} /> None yet.</p>}
+          </Card>
+        </div>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="space-y-6">
@@ -109,6 +166,20 @@ export function PublicProfileView({ person, status, friends, mutual, works }: {
           )}
         </Card>
       )}
+
+      <RecognizeDialog
+        open={recognising} name={person.name} onClose={() => setRecognising(false)}
+        onSubmit={async (title, message) => {
+          const err = await postJSON("/api/recognitions", { userId: person.id, title, message });
+          if (err) {
+            toast(err, "error");
+            return false;
+          }
+          toast(`${recognitionEmoji(title)} ${first} recognised as ${title}`);
+          onChanged?.();
+          return true;
+        }}
+      />
     </div>
   );
 }

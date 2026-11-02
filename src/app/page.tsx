@@ -15,15 +15,23 @@ const FEATURES = [
   { icon: EyeOff, q: "“What if people judge me?”", a: "Mask Mode lets you share photos, music and reels anonymously, and unmask only when you feel ready." },
   { icon: Clock, q: "“I don't have time, exams.”", a: "Timetable-aware micro-gigs of 20–45 minutes. Exam Mode pauses your streak, so there's no guilt." },
   { icon: Users, q: "“I don't know anyone there.”", a: "AI Squad Builder puts you in a cross-branch team where your skill fills a real gap." },
-  { icon: Medal, q: "“What's in it for me?”", a: "Kala Passport and a verified Cultural Portfolio. Backstage work counts as much as the spotlight." },
-  { icon: BarChart3, q: "“Who even shows up?”", a: "The Organizer Cockpit finds engagement gaps and dormant talent, then plans events with AI." },
+  { icon: Medal, q: "“What's in it for me?”", a: "Achievement badges, a Wall of Fame and a verified Cultural Portfolio. Backstage work counts as much as the spotlight." },
+  { icon: BarChart3, q: "“Who even shows up?”", a: "Core members post events with roles to fill, invite members who'd fit, and verify attendance with a check-in code." },
 ];
 
-function DemoLink({ busy, onClick, className = "" }: { busy: boolean; onClick: () => void; className?: string }) {
+function DemoLink({ busy, onClick, className = "" }: { busy: boolean; onClick: (as: "student" | "core") => void; className?: string }) {
   return (
-    <button disabled={busy} onClick={onClick} className={`font-semibold text-iris underline-offset-4 hover:underline disabled:opacity-50 ${className}`}>
-      {busy ? "Opening demo…" : "Explore with a demo account →"}
-    </button>
+    <span className={className}>
+      <button disabled={busy} onClick={() => onClick("student")} className="font-semibold text-iris underline-offset-4 hover:underline disabled:opacity-50">
+        {busy ? "Opening demo…" : "Explore with a demo account →"}
+      </button>
+      {!busy && (
+        <>
+          <span className="text-mute"> or </span>
+          <button onClick={() => onClick("core")} className="font-semibold text-iris underline-offset-4 hover:underline">as an SVM core member</button>
+        </>
+      )}
+    </span>
   );
 }
 
@@ -36,12 +44,12 @@ export default function Landing() {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
 
-  const openDemo = async () => {
+  const openDemo = async (as: "student" | "core") => {
     setBusy(true);
-    const err = await loadDemo();
+    const err = await loadDemo(as);
     setBusy(false);
     if (err) toast(err, "error");
-    else router.push("/home");
+    else router.push(as === "core" ? "/events" : "/home");
   };
 
   return (

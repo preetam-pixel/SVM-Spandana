@@ -139,7 +139,7 @@ function Person({ p, onChange }: { p: PersonCard; onChange: () => void }) {
         <Avatar name={p.name} src={p.avatar} size={52} hue={p.name.length * 37} />
         <div className="min-w-0">
           <div className="truncate font-display text-lg font-semibold hover:underline">{p.name}</div>
-          <div className="text-xs text-mute">{p.dept} · Year {p.year} · {LADDER[p.level]?.name ?? "Explorer"}</div>
+          <div className="text-xs text-mute">{p.dept} · Year {p.year} · {p.role === "core" ? <b className="text-magenta">SVM Core</b> : LADDER[p.level]?.name ?? "Explorer"}</div>
         </div>
       </Link>
       {p.sparkDone && <Badge color="#a87a26" className="mt-3 self-start">{archetype(p.dna)}</Badge>}

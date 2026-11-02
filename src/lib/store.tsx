@@ -22,7 +22,7 @@ interface Store {
   /** Saves account columns (name, usn, bio…). Returns an error message or null. */
   saveAccount: (fields: Partial<Omit<Account, "profile" | "id" | "phone">>) => Promise<string | null>;
   applyAccount: (a: Account | null) => void;
-  loadDemo: () => Promise<string | null>;
+  loadDemo: (as?: "student" | "core") => Promise<string | null>;
   logout: () => Promise<void>;
   toasts: Toast[];
   toast: (text: string, tone?: Toast["tone"]) => void;
@@ -119,8 +119,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     return null;
   }, []);
 
-  const loadDemo = useCallback(async () => {
-    const res = await fetch("/api/auth/demo", { method: "POST" });
+  const loadDemo = useCallback(async (as: "student" | "core" = "student") => {
+    const res = await fetch("/api/auth/demo", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ as }) });
     const d = await res.json().catch(() => ({}));
     if (!res.ok || !d.user) return (d.error as string) ?? "Couldn't open the demo account";
     applyAccount(d.user);

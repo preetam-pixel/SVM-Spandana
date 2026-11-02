@@ -1,22 +1,26 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { Activity, BookOpenCheck, Contact, Menu, Radio, Sparkles, Stamp, UserRound, Users, UsersRound, VenetianMask, X } from "lucide-react";
+import { Activity, BookOpenCheck, CalendarDays, Contact, Menu, Radio, Sparkles, Stamp, Trophy, UserRound, Users, UsersRound, VenetianMask, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Logo } from "@/components/Logo";
 import { Avatar, Button, cx } from "@/components/ui";
+import { ACHIEVEMENT_MAP } from "@/lib/achievements";
 import { LADDER } from "@/lib/data";
 import { useStore } from "@/lib/store";
+import type { DisciplineId } from "@/lib/types";
 
 const PRIMARY = [
   { href: "/home", label: "Pulse", icon: Activity },
+  { href: "/events", label: "Events", icon: CalendarDays },
   { href: "/stage", label: "Mask Mode", icon: VenetianMask },
-  { href: "/squads", label: "Squads", icon: Users },
   { href: "/people", label: "People", icon: UsersRound },
 ];
 const SECONDARY = [
+  { href: "/squads", label: "Squads", icon: Users },
+  { href: "/achievements", label: "Achievements", icon: Trophy },
   { href: "/guru", label: "Guru", icon: Sparkles },
   { href: "/passport", label: "Passport", icon: Stamp },
   { href: "/team", label: "SVM Team", icon: Contact },
@@ -27,23 +31,69 @@ const EXTRA = [
   { href: "/live", label: "Live Stage", icon: Radio },
 ];
 
-// Pages that work before the Creative Spark is taken.
-const OPEN_BEFORE_SPARK = ["/profile", "/team", "/people"];
-const isActive = (path: string, href: string) => path === href || (href === "/people" && path.startsWith("/u/"));
+// Pages that work before the Creative Spark is taken (and everything under them).
+const OPEN_BEFORE_SPARK = ["/profile", "/team", "/people", "/u", "/events", "/achievements"];
+const under = (path: string, href: string) => path === href || path.startsWith(`${href}/`);
+const isActive = (path: string, href: string) => under(path, href) || (href === "/people" && path.startsWith("/u/"));
+
+interface Notifications {
+  friendRequests: number;
+  invites: number;
+  unlocked: string[];
+  recognitions: { id: string; title: string }[];
+  attended?: { id: string; title: string; role: string; kind: "attended" | "gig" | "showcase"; discipline?: DisciplineId }[];
+}
+const EVENT_POINTS = { attended: 15, gig: 20, showcase: 25 } as const;
 
 export default function StudentLayout({ children }: { children: React.ReactNode }) {
-  const { ready, account, profile, update, toast } = useStore();
+  const { ready, account, profile, update, addContribution, toast } = useStore();
   const path = usePathname();
   const router = useRouter();
-  const [requests, setRequests] = useState(0);
+  const [badges, setBadges] = useState({ requests: 0, invites: 0 });
   const [more, setMore] = useState(false);
+  const lastCheck = useRef(0);
+  const celebrated = useRef(new Set<string>());
+  const seenRef = useRef({ achievements: profile.seenAchievements, recognitions: profile.seenRecognitions, contributions: profile.contributions });
+  seenRef.current = { achievements: profile.seenAchievements, recognitions: profile.seenRecognitions, contributions: profile.contributions };
+  const accountId = account?.id;
 
-  // Badge for friend requests waiting on this member; refreshed on navigation.
+  // Nav badges (friend requests, event invites) and newly earned achievements / recognitions.
+  // Refreshed on navigation, at most every 10 seconds.
   useEffect(() => {
-    if (!account) return;
-    fetch("/api/friends").then((r) => r.json()).then((d) => setRequests(d.incoming?.length ?? 0)).catch(() => {});
     setMore(false);
-  }, [account, path]);
+    if (!accountId || Date.now() - lastCheck.current < 10_000) return;
+    lastCheck.current = Date.now();
+    fetch("/api/notifications")
+      .then((r) => r.json())
+      .then((d: Notifications) => {
+        if (!Array.isArray(d.unlocked)) return;
+        setBadges({ requests: d.friendRequests ?? 0, invites: d.invites ?? 0 });
+        // Events verified by check-in count like any contribution: points, a passport stamp, ladder progress.
+        const credited = new Set(seenRef.current.contributions.map((c) => c.ref).filter(Boolean));
+        for (const a of d.attended ?? []) {
+          if (credited.has(`event:${a.id}`)) continue;
+          addContribution({
+            title: a.kind === "attended" ? `Attended ${a.title}` : `${a.role} at ${a.title}`, kind: a.kind, discipline: a.discipline,
+            points: EVENT_POINTS[a.kind], ref: `event:${a.id}`,
+          });
+        }
+        const seen = new Set([...(seenRef.current.achievements ?? []), ...celebrated.current]);
+        const fresh = d.unlocked.filter((id) => !seen.has(id) && ACHIEVEMENT_MAP[id]);
+        const seenRecs = new Set([...(seenRef.current.recognitions ?? []), ...celebrated.current]);
+        const recs = d.recognitions.filter((r) => !seenRecs.has(r.id));
+        if (!fresh.length && !recs.length) return;
+        [...fresh, ...recs.map((r) => r.id)].forEach((id) => celebrated.current.add(id));
+        if (fresh.length > 2) toast(`🏅 ${fresh.length} new achievements unlocked! See them in Achievements`, "level");
+        else fresh.forEach((id, i) => setTimeout(() => toast(`🏅 Achievement unlocked: ${ACHIEVEMENT_MAP[id].name}`, "level"), i * 600));
+        recs.slice(0, 2).forEach((r) => toast(`🏆 SVM recognised you: ${r.title}!`, "level"));
+        update((p) => ({
+          ...p,
+          seenAchievements: [...new Set([...(p.seenAchievements ?? []), ...d.unlocked])],
+          seenRecognitions: [...new Set([...(p.seenRecognitions ?? []), ...d.recognitions.map((r) => r.id)])],
+        }));
+      })
+      .catch(() => {});
+  }, [accountId, path, toast, update, addContribution]);
 
   useEffect(() => {
     if (ready && !account) router.replace("/login");
@@ -52,7 +102,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
   if (!ready || !account) return <div className="grid min-h-dvh place-items-center text-mute">Loading…</div>;
 
   // The profile page works before the Creative Spark; everything else needs a DNA.
-  if (!profile.sparkDone && !OPEN_BEFORE_SPARK.includes(path) && !path.startsWith("/u/"))
+  if (!profile.sparkDone && !OPEN_BEFORE_SPARK.some((p) => under(path, p)))
     return (
       <div className="grid min-h-dvh place-items-center px-4">
         <div className="card max-w-md p-8 text-center">
@@ -68,6 +118,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
     );
 
   const rung = LADDER[profile.level];
+  const badgeFor = (href: string) => (href === "/people" ? badges.requests : href === "/events" ? badges.invites : 0);
 
   return (
     <div className="min-h-dvh pb-24 lg:pb-0 lg:pl-60">
@@ -77,7 +128,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
           {[...PRIMARY, ...SECONDARY].map((n) => (
             <Link key={n.href} href={n.href} className={cx("flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition", isActive(path, n.href) ? "bg-iris text-white shadow-md shadow-iris/20" : "text-mute hover:bg-fg/5 hover:text-fg")}>
               <n.icon size={18} /> {n.label}
-              {n.href === "/people" && requests > 0 && <span className="ml-auto rounded-full bg-magenta px-1.5 text-[11px] font-bold text-white">{requests}</span>}
+              {badgeFor(n.href) > 0 && <span className="ml-auto rounded-full bg-magenta px-1.5 text-[11px] font-bold text-white">{badgeFor(n.href)}</span>}
             </Link>
           ))}
         </nav>
@@ -87,7 +138,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
             <Avatar name={account.name} src={account.avatar} />
             <div className="min-w-0">
               <div className="truncate text-sm font-semibold">{account.name}</div>
-              <div className="text-xs text-mute">{rung.name} · {account.dept} {account.year} yr</div>
+              <div className="text-xs text-mute">{account.role === "core" ? "SVM Core" : rung.name} · {account.dept} {account.year} yr</div>
             </div>
           </Link>
         </div>
@@ -118,10 +169,10 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
         {PRIMARY.map((n) => (
           <Link key={n.href} href={n.href} className={cx("relative flex flex-col items-center gap-0.5 rounded-xl px-2 py-1 text-[10px] font-medium", isActive(path, n.href) ? "text-fg" : "text-mute")}>
             <n.icon size={20} className={isActive(path, n.href) ? "text-iris" : ""} /> {n.label}
-            {n.href === "/people" && requests > 0 && <span className="absolute -top-0.5 right-1 grid h-4 min-w-4 place-items-center rounded-full bg-magenta px-1 text-[9px] font-bold text-white">{requests}</span>}
+            {badgeFor(n.href) > 0 && <span className="absolute -top-0.5 right-1 grid h-4 min-w-4 place-items-center rounded-full bg-magenta px-1 text-[9px] font-bold text-white">{badgeFor(n.href)}</span>}
           </Link>
         ))}
-        <button onClick={() => setMore(true)} className={cx("flex flex-col items-center gap-0.5 rounded-xl px-2 py-1 text-[10px] font-medium", SECONDARY.some((n) => n.href === path) ? "text-fg" : "text-mute")}>
+        <button onClick={() => setMore(true)} className={cx("flex flex-col items-center gap-0.5 rounded-xl px-2 py-1 text-[10px] font-medium", SECONDARY.some((n) => isActive(path, n.href)) ? "text-fg" : "text-mute")}>
           <Menu size={20} /> More
         </button>
       </nav>
@@ -140,7 +191,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
               </div>
               <div className="grid grid-cols-3 gap-2">
                 {[...SECONDARY, ...EXTRA].map((n) => (
-                  <Link key={n.href} href={n.href} className={cx("flex flex-col items-center gap-1.5 rounded-2xl border p-3 text-center text-xs font-medium", path === n.href ? "border-iris bg-iris text-white" : "border-line bg-white text-fg")}>
+                  <Link key={n.href} href={n.href} className={cx("flex flex-col items-center gap-1.5 rounded-2xl border p-3 text-center text-xs font-medium", isActive(path, n.href) ? "border-iris bg-iris text-white" : "border-line bg-white text-fg")}>
                     <n.icon size={20} /> {n.label}
                   </Link>
                 ))}

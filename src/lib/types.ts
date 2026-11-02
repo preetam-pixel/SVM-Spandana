@@ -116,6 +116,9 @@ export interface PublicProfile {
   email?: string;
   usn?: string;
   demo?: boolean; // one of the simulated campus students
+  role?: Role;
+  achievements?: string[]; // unlocked achievement ids (public activity only)
+  recognitions?: Recognition[];
 }
 
 export interface PersonCard {
@@ -130,6 +133,7 @@ export interface PersonCard {
   dna: DNA;
   sparkDone: boolean;
   status: FriendStatus;
+  role?: Role;
 }
 
 export interface Contribution {
@@ -158,7 +162,12 @@ export interface Profile {
   contributions: Contribution[];
   myPosts: MaskPost[];
   streakWeeks: number;
+  seenAchievements?: string[]; // achievement ids already celebrated with a toast
+  seenRecognitions?: string[];
+  hideFromBoards?: boolean; // opt out of leaderboards
 }
+
+export type Role = "member" | "core";
 
 /** Account details stored in their own columns; `profile` holds the engagement state. */
 export interface Account {
@@ -174,8 +183,137 @@ export interface Account {
   youtube: string;
   avatar: string;
   createdAt: number;
+  role: Role;
   profile: Profile;
 }
 
 export type AiTask = "verse" | "path" | "guru" | "squad" | "plan" | "kind" | "insight";
 export type AiSource = "claude" | "gemini" | "offline";
+
+/* ---------- Club events posted by SVM core members ---------- */
+
+export type ClubEventKind = "workshop" | "jam" | "performance" | "showcase" | "competition" | "audition" | "meeting";
+
+/** One line of an event's call for participants, e.g. "Singer × 4 (on stage)". slots 0 = no limit. */
+export interface EventRole {
+  id: string;
+  label: string;
+  slots: number;
+  stage: boolean;
+}
+
+export interface RoleFill extends EventRole {
+  filled: number;
+}
+
+export interface ClubEvent {
+  id: string;
+  title: string;
+  description: string;
+  discipline: DisciplineId;
+  kind: ClubEventKind;
+  level: EventLevel;
+  venue: string;
+  startsAt: number;
+  durationMin: number;
+  cancelled: boolean;
+  poster?: string;
+  roles: RoleFill[]; // always starts with the built-in "audience" role
+  going: number;
+  host: string;
+  friendsGoing: string[]; // first names of the viewer's friends who signed up
+  mine?: { roleId: string; attended: boolean };
+  invite?: { roleId: string; status: "pending" | "accepted" | "declined" };
+}
+
+export interface EventPerson {
+  id: string;
+  name: string;
+  avatar: string;
+  dept: Dept;
+  year: number;
+  roleId: string;
+  friend: boolean;
+  // Organiser-only fields
+  note?: string;
+  attended?: boolean;
+  star?: boolean;
+}
+
+export interface EventDetail {
+  event: ClubEvent;
+  people: EventPerson[];
+  core: boolean;
+  canCheckIn: boolean;
+  checkinCode?: string; // core only
+  invites?: { userId: string; name: string; roleId: string; status: "pending" | "accepted" | "declined" }[]; // core only
+}
+
+export interface Suggestion {
+  id: string;
+  name: string;
+  avatar: string;
+  dept: Dept;
+  year: number;
+  level: number;
+  fit: number; // 0..100
+  reasons: string[];
+}
+
+export interface Announcement {
+  id: string;
+  title: string;
+  body: string;
+  link?: string;
+  pinned: boolean;
+  createdAt: number;
+  by: string;
+}
+
+export interface Recognition {
+  id: string;
+  userId: string;
+  name: string;
+  avatar: string;
+  dept: Dept;
+  year: number;
+  title: string;
+  message: string;
+  eventId?: string;
+  eventTitle?: string;
+  by: string;
+  createdAt: number;
+}
+
+/* ---------- Achievements ---------- */
+
+/** Facts an achievement can be earned from. Public stats leave out anything from masked works. */
+export interface Stats {
+  sparkDone: boolean;
+  stamps: number;
+  quests: number;
+  posts: number;
+  unmasked: number;
+  reactions: number;
+  comments: number;
+  friends: number;
+  signups: number;
+  attended: number;
+  crew: number;
+  stage: number;
+  stars: number;
+  recognitions: number;
+  hosted: number;
+  biggestEvent: number; // most sign-ups on an event this member organised
+}
+
+export interface LeaderRow {
+  id: string;
+  name: string;
+  avatar: string;
+  dept: Dept;
+  year: number;
+  score: number;
+  badges: number;
+  core: boolean;
+}
