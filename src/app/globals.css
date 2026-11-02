@@ -1,0 +1,97 @@
+@import "tailwindcss";
+
+/* Classical theme: ivory & beige surfaces, deep brown ink, antique gold accents. */
+@theme {
+  --color-ink: #f6efe2;      /* page background (beige) */
+  --color-night: #fffbf4;    /* sidebar / sheets */
+  --color-panel: #ffffff;
+  --color-panel2: #f3e9d8;
+  --color-line: rgb(92 58 33 / 0.14);
+  --color-fg: #3b2416;       /* primary text (deep brown) */
+  --color-saffron: #b5651d;  /* copper */
+  --color-magenta: #8b3a3a;  /* maroon */
+  --color-iris: #5c3a21;     /* walnut brown */
+  --color-aqua: #4f7b5f;     /* sage (success) */
+  --color-gold: #a87a26;     /* antique gold */
+  --color-sand: #f2c46b;     /* logo sand */
+  --color-mute: #8a6f58;
+  --font-sans: var(--font-jakarta), system-ui, sans-serif;
+  --font-display: var(--font-playfair), Georgia, serif;
+  --font-kn: var(--font-kannada), sans-serif;
+}
+
+html,
+body {
+  background: var(--color-ink);
+  color: var(--color-fg);
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  min-height: 100dvh;
+  background:
+    radial-gradient(900px 520px at 10% -10%, rgb(242 196 107 / 0.28), transparent 60%),
+    radial-gradient(800px 500px at 100% 0%, rgb(255 255 255 / 0.9), transparent 60%),
+    radial-gradient(700px 500px at 50% 115%, rgb(181 101 29 / 0.1), transparent 60%),
+    var(--color-ink);
+  background-attachment: fixed;
+}
+
+.rangoli-dots {
+  background-image: radial-gradient(rgb(92 58 33 / 0.09) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+.grad-text {
+  background: linear-gradient(92deg, #8b5a2b, #5c3a21 50%, #a87a26);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Unlayered on purpose: anything on the brown gradient gets white text. */
+.grad-bg {
+  background: linear-gradient(115deg, #8b5a2b, #5c3a21 60%, #3b2416);
+  color: #fffaf0;
+}
+
+.card {
+  background: #fffdf9;
+  border: 1px solid var(--color-line);
+  border-radius: 1.25rem;
+  box-shadow: 0 1px 2px rgb(92 58 33 / 0.05), 0 10px 30px -18px rgb(92 58 33 / 0.35);
+}
+
+.shimmer {
+  background: linear-gradient(90deg, rgb(92 58 33 / 0.06), rgb(92 58 33 / 0.14), rgb(92 58 33 / 0.06));
+  background-size: 200% 100%;
+  animation: shimmer 1.3s infinite linear;
+  border-radius: 0.6rem;
+}
+@keyframes shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes pulse-ring {
+  0% { transform: scale(0.9); opacity: 0.8; }
+  100% { transform: scale(1.8); opacity: 0; }
+}
+.pulse-ring::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  border: 2px solid currentColor;
+  animation: pulse-ring 1.6s ease-out infinite;
+}
+
+input, textarea, select { color: var(--color-fg); }
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: rgb(92 58 33 / 0.2); border-radius: 8px; }
+
+@media print {
+  body { background: #fff; }
+}
