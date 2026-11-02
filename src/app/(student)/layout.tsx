@@ -1,26 +1,49 @@
 "use client";
 
-import { Activity, BookOpenCheck, Sparkles, Stamp, UserRound, Users, VenetianMask } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { Activity, BookOpenCheck, Contact, Menu, Radio, Sparkles, Stamp, UserRound, Users, UsersRound, VenetianMask, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Logo } from "@/components/Logo";
 import { Avatar, Button, cx } from "@/components/ui";
 import { LADDER } from "@/lib/data";
 import { useStore } from "@/lib/store";
 
-const NAV = [
+const PRIMARY = [
   { href: "/home", label: "Pulse", icon: Activity },
   { href: "/stage", label: "Mask Mode", icon: VenetianMask },
   { href: "/squads", label: "Squads", icon: Users },
+  { href: "/people", label: "People", icon: UsersRound },
+];
+const SECONDARY = [
   { href: "/guru", label: "Guru", icon: Sparkles },
   { href: "/passport", label: "Passport", icon: Stamp },
+  { href: "/team", label: "SVM Team", icon: Contact },
+  { href: "/profile", label: "Profile", icon: UserRound },
 ];
+const EXTRA = [
+  { href: "/cockpit", label: "Organizer Cockpit", icon: BookOpenCheck },
+  { href: "/live", label: "Live Stage", icon: Radio },
+];
+
+// Pages that work before the Creative Spark is taken.
+const OPEN_BEFORE_SPARK = ["/profile", "/team", "/people"];
+const isActive = (path: string, href: string) => path === href || (href === "/people" && path.startsWith("/u/"));
 
 export default function StudentLayout({ children }: { children: React.ReactNode }) {
   const { ready, account, profile, update, toast } = useStore();
   const path = usePathname();
   const router = useRouter();
+  const [requests, setRequests] = useState(0);
+  const [more, setMore] = useState(false);
+
+  // Badge for friend requests waiting on this member; refreshed on navigation.
+  useEffect(() => {
+    if (!account) return;
+    fetch("/api/friends").then((r) => r.json()).then((d) => setRequests(d.incoming?.length ?? 0)).catch(() => {});
+    setMore(false);
+  }, [account, path]);
 
   useEffect(() => {
     if (ready && !account) router.replace("/login");
@@ -29,7 +52,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
   if (!ready || !account) return <div className="grid min-h-dvh place-items-center text-mute">Loading…</div>;
 
   // The profile page works before the Creative Spark; everything else needs a DNA.
-  if (!profile.sparkDone && path !== "/profile")
+  if (!profile.sparkDone && !OPEN_BEFORE_SPARK.includes(path) && !path.startsWith("/u/"))
     return (
       <div className="grid min-h-dvh place-items-center px-4">
         <div className="card max-w-md p-8 text-center">
@@ -51,9 +74,10 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col border-r border-line bg-night/90 p-5 backdrop-blur-xl lg:flex">
         <Logo small />
         <nav className="mt-8 space-y-1">
-          {[...NAV, { href: "/profile", label: "Profile", icon: UserRound }].map((n) => (
-            <Link key={n.href} href={n.href} className={cx("flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition", path === n.href ? "bg-iris text-white shadow-md shadow-iris/20" : "text-mute hover:bg-fg/5 hover:text-fg")}>
+          {[...PRIMARY, ...SECONDARY].map((n) => (
+            <Link key={n.href} href={n.href} className={cx("flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition", isActive(path, n.href) ? "bg-iris text-white shadow-md shadow-iris/20" : "text-mute hover:bg-fg/5 hover:text-fg")}>
               <n.icon size={18} /> {n.label}
+              {n.href === "/people" && requests > 0 && <span className="ml-auto rounded-full bg-magenta px-1.5 text-[11px] font-bold text-white">{requests}</span>}
             </Link>
           ))}
         </nav>
@@ -91,12 +115,40 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
       <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6">{children}</main>
 
       <nav className="fixed inset-x-0 bottom-0 z-30 flex justify-around border-t border-line bg-night/95 px-2 pb-[max(env(safe-area-inset-bottom),8px)] pt-2 backdrop-blur-xl lg:hidden">
-        {NAV.map((n) => (
-          <Link key={n.href} href={n.href} className={cx("flex flex-col items-center gap-0.5 rounded-xl px-2 py-1 text-[10px] font-medium", path === n.href ? "text-fg" : "text-mute")}>
-            <n.icon size={20} className={path === n.href ? "text-iris" : ""} /> {n.label}
+        {PRIMARY.map((n) => (
+          <Link key={n.href} href={n.href} className={cx("relative flex flex-col items-center gap-0.5 rounded-xl px-2 py-1 text-[10px] font-medium", isActive(path, n.href) ? "text-fg" : "text-mute")}>
+            <n.icon size={20} className={isActive(path, n.href) ? "text-iris" : ""} /> {n.label}
+            {n.href === "/people" && requests > 0 && <span className="absolute -top-0.5 right-1 grid h-4 min-w-4 place-items-center rounded-full bg-magenta px-1 text-[9px] font-bold text-white">{requests}</span>}
           </Link>
         ))}
+        <button onClick={() => setMore(true)} className={cx("flex flex-col items-center gap-0.5 rounded-xl px-2 py-1 text-[10px] font-medium", SECONDARY.some((n) => n.href === path) ? "text-fg" : "text-mute")}>
+          <Menu size={20} /> More
+        </button>
       </nav>
+
+      <AnimatePresence>
+        {more && (
+          <motion.div className="fixed inset-0 z-40 bg-fg/30 lg:hidden" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setMore(false)}>
+            <motion.div
+              initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 28, stiffness: 300 }}
+              onClick={(e) => e.stopPropagation()}
+              className="absolute inset-x-0 bottom-0 rounded-t-3xl bg-night p-5 pb-[max(env(safe-area-inset-bottom),20px)] shadow-2xl"
+            >
+              <div className="mb-3 flex items-center justify-between">
+                <span className="font-display text-lg font-semibold">More</span>
+                <button onClick={() => setMore(false)} className="rounded-full p-1.5 text-mute hover:bg-fg/5" aria-label="Close"><X size={18} /></button>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {[...SECONDARY, ...EXTRA].map((n) => (
+                  <Link key={n.href} href={n.href} className={cx("flex flex-col items-center gap-1.5 rounded-2xl border p-3 text-center text-xs font-medium", path === n.href ? "border-iris bg-iris text-white" : "border-line bg-white text-fg")}>
+                    <n.icon size={20} /> {n.label}
+                  </Link>
+                ))}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

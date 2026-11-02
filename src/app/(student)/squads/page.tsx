@@ -3,7 +3,8 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { CalendarClock, Check, GitBranch, Sparkles, Users, Wand2 } from "lucide-react";
 import dynamic from "next/dynamic";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import type { ConstellationFriend } from "@/components/Constellation";
 import { AiTag, Avatar, Badge, Button, Card, DiscIcon, SectionHead, Shimmer } from "@/components/ui";
 import { askAI } from "@/lib/ai";
 import { COLLAB_LINKS, DIM_MAP, DISC_MAP, LADDER, QUESTS, STUDENTS } from "@/lib/data";
@@ -18,6 +19,11 @@ export default function SquadsPage() {
   const [active, setActive] = useState<Quest | null>(null);
   const [squad, setSquad] = useState<Squad | null>(null);
   const [ai, setAi] = useState<{ name: string; pitch: string; source: string } | null>(null);
+  const [friends, setFriends] = useState<ConstellationFriend[]>([]);
+
+  useEffect(() => {
+    fetch("/api/friends").then((r) => r.json()).then((d) => d.friends && setFriends(d.friends)).catch(() => {});
+  }, []);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const myLinks = useMemo(() => [...new Set(profile.quests.flatMap((id) => {
     const q = QUESTS.find((x) => x.id === id);
@@ -55,15 +61,15 @@ export default function SquadsPage() {
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <h1 className="font-display text-2xl font-bold">Creative Constellation</h1>
-            <p className="mt-1 max-w-xl text-sm text-mute">Every dot is an SVM creator, coloured by art form. <span className="text-magenta">Pink lines</span> are collaborations across disciplines, the links Spandana is designed to grow.</p>
+            <p className="mt-1 max-w-xl text-sm text-mute">Every dot is an SVM creator, coloured by art form. <span className="text-magenta">Pink lines</span> are collaborations across disciplines; <span className="text-gold">gold lines</span> connect you to your squads and friends. <b className="text-fg">Tap any dot to open their profile.</b></p>
           </div>
           <div className="flex gap-6 text-center">
-            <Stat n={activeCount + (myLinks.length ? 1 : 0)} l="creators" />
-            <Stat n={COLLAB_LINKS.length + myLinks.length} l="collabs" />
+            <Stat n={activeCount + friends.length + (myLinks.length || friends.length ? 1 : 0)} l="creators" />
+            <Stat n={COLLAB_LINKS.length + myLinks.length + friends.length} l="collabs" />
             <Stat n={`${cross}%`} l="cross-discipline" />
           </div>
         </div>
-        <div className="mt-3 rounded-2xl bg-white"><Constellation myLinks={myLinks} /></div>
+        <div className="mt-3 rounded-2xl bg-white"><Constellation myLinks={myLinks} friends={friends} /></div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[1fr_1.1fr]">

@@ -85,6 +85,14 @@ export default function ProfilePage() {
     toast("Profile photo updated");
   };
 
+  const setMask = async (w: MaskPost, reveal: boolean) => {
+    if (reveal && !confirm(`Unmask “${w.title}”? Your name will appear on it and on your public profile.`)) return;
+    const res = await fetch(`/api/posts/${w.id}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: reveal ? "unmask" : "remask" }) });
+    if (!res.ok) return toast("Couldn't update", "error");
+    setWorks((ws) => ws.map((x) => (x.id === w.id ? { ...x, unmasked: reveal ? `${account.name}` : undefined } : x)));
+    toast(reveal ? "Unmasked: it now shows on your public profile 🎉" : "Masked again: it's anonymous now", reveal ? "level" : "info");
+  };
+
   const removeWork = async (id: string) => {
     if (!confirm("Delete this work permanently?")) return;
     const res = await fetch(`/api/posts/${id}`, { method: "DELETE" });
@@ -245,9 +253,14 @@ export default function ProfilePage() {
                     <div className="flex items-center justify-between gap-2 p-2.5">
                       <div className="min-w-0">
                         <div className="truncate text-sm font-semibold">{w.title}</div>
-                        <div className="flex items-center gap-1 text-[11px] text-mute">{w.unmasked ? "Unmasked" : <><VenetianMask size={11} /> as {w.alias}</>}</div>
+                        <div className="flex items-center gap-1 text-[11px] text-mute">{w.unmasked ? <span className="text-aqua">Unmasked</span> : <><VenetianMask size={11} /> as {w.alias}</>}</div>
                       </div>
-                      <button onClick={() => removeWork(w.id)} className="text-mute hover:text-magenta" aria-label="Delete"><Trash2 size={15} /></button>
+                      <div className="flex shrink-0 items-center gap-1">
+                        <button onClick={() => setMask(w, !w.unmasked)} className={cx("rounded-full px-2 py-1 text-[11px] font-semibold", w.unmasked ? "border border-line text-mute hover:text-fg" : "grad-bg")}>
+                          {w.unmasked ? "Mask" : "Unmask"}
+                        </button>
+                        <button onClick={() => removeWork(w.id)} className="p-1 text-mute hover:text-magenta" aria-label="Delete"><Trash2 size={15} /></button>
+                      </div>
                     </div>
                   </div>
                 ))}
