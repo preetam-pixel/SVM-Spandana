@@ -20,6 +20,9 @@
   --font-kn: var(--font-kannada), sans-serif;
 }
 
+/* Wide, landscape screens: the home page shows the Sangeeta Vrinda artwork full-bleed. */
+@custom-variant wide (@media (min-width: 900px) and (min-aspect-ratio: 5/4));
+
 html,
 body {
   background: var(--color-ink);

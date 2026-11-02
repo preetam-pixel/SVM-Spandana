@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { DEPTS } from "@/lib/data";
-import { OtpError, checkOtp, newId, normalizePhone, startSession } from "@/lib/server/auth";
-import { db, userByPhone } from "@/lib/server/db";
+import { failure, normalizePhone, otpMessage } from "@/lib/server/auth";
+import { accountById, profileRow } from "@/lib/server/db";
+import { admin, supabaseAuth } from "@/lib/supabase/server";
 import type { Dept } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -19,22 +20,29 @@ export async function POST(req: Request) {
   if (!phone || !/^\d{6}$/.test(String(code))) return NextResponse.json({ error: "Enter the 6-digit OTP." }, { status: 400 });
 
   try {
-    if (!(await checkOtp(phone, String(code)))) return NextResponse.json({ error: "Incorrect OTP. Please try again." }, { status: 401 });
-  } catch (e) {
-    if (e instanceof OtpError) return NextResponse.json({ error: e.message }, { status: 401 });
-    throw e;
-  }
+    const sb = await supabaseAuth();
+    // On success this writes the Supabase session cookies.
+    const { data, error } = await sb.auth.verifyOtp({ phone, token: String(code), type: "sms" });
+    if (error || !data.user) return NextResponse.json({ error: otpMessage(error?.message ?? "Verification failed", "verify") }, { status: 401 });
 
-  let user = userByPhone(phone);
-  if (!user) {
-    if (mode !== "register" || !details?.name?.trim()) return NextResponse.json({ error: "No account found. Please register." }, { status: 404 });
-    const dept: Dept = DEPTS.includes(details.dept as Dept) ? (details.dept as Dept) : "CSE";
-    const year = Math.min(4, Math.max(1, Number(details.year) || 1));
-    const id = newId("u");
-    db().prepare("INSERT INTO users (id, phone, name, usn, dept, year, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)")
-      .run(id, phone, details.name.trim().slice(0, 60), (details.usn ?? "").trim().toUpperCase().slice(0, 12), dept, year, Date.now());
-    user = userByPhone(phone)!;
+    if (!(await profileRow(data.user.id))) {
+      if (mode !== "register" || !details?.name?.trim()) {
+        await sb.auth.signOut();
+        return NextResponse.json({ error: "No account found. Please register." }, { status: 404 });
+      }
+      const dept: Dept = DEPTS.includes(details.dept as Dept) ? (details.dept as Dept) : "CSE";
+      const { error: insertError } = await admin().from("profiles").insert({
+        id: data.user.id,
+        phone,
+        name: details.name.trim().slice(0, 60),
+        usn: (details.usn ?? "").trim().toUpperCase().slice(0, 12),
+        dept,
+        year: Math.min(4, Math.max(1, Number(details.year) || 1)),
+      });
+      if (insertError) throw insertError;
+    }
+    return NextResponse.json({ user: await accountById(data.user.id) });
+  } catch (e) {
+    return failure(e);
   }
-  await startSession(user.id);
-  return NextResponse.json({ user });
 }

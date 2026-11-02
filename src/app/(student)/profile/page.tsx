@@ -10,6 +10,7 @@ import { DAYS, DEPTS, DIM_MAP, DISCIPLINES, LADDER, TIMES } from "@/lib/data";
 import { archetype, points } from "@/lib/engine";
 import { useStore } from "@/lib/store";
 import type { Dept, DisciplineId, MaskPost } from "@/lib/types";
+import { uploadMedia } from "@/lib/upload-client";
 
 const input = "w-full rounded-xl border border-line bg-white px-3 py-2.5 text-sm outline-none focus:border-iris/60";
 
@@ -74,9 +75,10 @@ export default function ProfilePage() {
   };
 
   const uploadAvatar = async (file: File) => {
-    const fd = new FormData();
-    fd.append("file", file);
-    const res = await fetch("/api/me/avatar", { method: "POST", body: fd });
+    toast("Uploading photo…", "info");
+    const up = await uploadMedia(file, "avatar");
+    if ("error" in up) return toast(up.error, "error");
+    const res = await fetch("/api/me", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ avatarPath: up.path }) });
     const d = await res.json();
     if (!res.ok) return toast(d.error ?? "Upload failed", "error");
     applyAccount({ ...d.user, profile });

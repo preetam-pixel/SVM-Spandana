@@ -13,6 +13,8 @@ interface Toast {
 
 interface Store {
   ready: boolean;
+  /** False when the Supabase keys are missing from .env. */
+  configured: boolean;
   account: Account | null;
   profile: Profile;
   update: (fn: (p: Profile) => Profile) => void;
@@ -20,7 +22,7 @@ interface Store {
   /** Saves account columns (name, usn, bio…). Returns an error message or null. */
   saveAccount: (fields: Partial<Omit<Account, "profile" | "id" | "phone">>) => Promise<string | null>;
   applyAccount: (a: Account | null) => void;
-  loadDemo: () => Promise<void>;
+  loadDemo: () => Promise<string | null>;
   logout: () => Promise<void>;
   toasts: Toast[];
   toast: (text: string, tone?: Toast["tone"]) => void;
@@ -32,6 +34,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [account, setAccount] = useState<Account | null>(null);
   const [profile, setProfile] = useState<Profile>(EMPTY_PROFILE);
   const [ready, setReady] = useState(false);
+  const [configured, setConfigured] = useState(true);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const prevLevel = useRef<number | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -52,7 +55,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     fetch("/api/me")
       .then((r) => r.json())
-      .then((d) => applyAccount(d.user ?? null))
+      .then((d) => {
+        setConfigured(d.configured !== false);
+        applyAccount(d.user ?? null);
+      })
       .catch(() => applyAccount(null))
       .finally(() => setReady(true));
   }, [applyAccount]);
@@ -110,8 +116,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const loadDemo = useCallback(async () => {
-    const d = await fetch("/api/auth/demo", { method: "POST" }).then((r) => r.json());
+    const res = await fetch("/api/auth/demo", { method: "POST" });
+    const d = await res.json().catch(() => ({}));
+    if (!res.ok || !d.user) return (d.error as string) ?? "Couldn't open the demo account";
     applyAccount(d.user);
+    return null;
   }, [applyAccount]);
 
   const logout = useCallback(async () => {
@@ -121,8 +130,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }, [applyAccount, flush]);
 
   const value = useMemo(
-    () => ({ ready, account, profile, update, addContribution, saveAccount, applyAccount, loadDemo, logout, toasts, toast }),
-    [ready, account, profile, update, addContribution, saveAccount, applyAccount, loadDemo, logout, toasts, toast],
+    () => ({ ready, configured, account, profile, update, addContribution, saveAccount, applyAccount, loadDemo, logout, toasts, toast }),
+    [ready, configured, account, profile, update, addContribution, saveAccount, applyAccount, loadDemo, logout, toasts, toast],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
