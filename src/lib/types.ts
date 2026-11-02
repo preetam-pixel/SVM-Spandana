@@ -89,6 +89,47 @@ export interface MaskPost {
   mine?: boolean;
   media?: string; // URL of an uploaded photo / audio / video
   mime?: string;
+  creatorId?: string; // only present once the creator has unmasked
+}
+
+export type FriendStatus = "self" | "none" | "outgoing" | "incoming" | "friends";
+
+/** What other members can see about someone. Phone is never shared; email and USN only with friends. */
+export interface PublicProfile {
+  id: string;
+  name: string;
+  dept: Dept;
+  year: number;
+  bio: string;
+  avatar: string;
+  instagram: string;
+  youtube: string;
+  dna: DNA;
+  sparkDone: boolean;
+  hiddenSpark: Dim | null;
+  level: number;
+  stamps: DisciplineId[];
+  declared: DisciplineId[];
+  points: number;
+  contributions: number;
+  createdAt: number;
+  email?: string;
+  usn?: string;
+  demo?: boolean; // one of the simulated campus students
+}
+
+export interface PersonCard {
+  id: string;
+  name: string;
+  dept: Dept;
+  year: number;
+  avatar: string;
+  bio: string;
+  level: number;
+  declared: DisciplineId[];
+  dna: DNA;
+  sparkDone: boolean;
+  status: FriendStatus;
 }
 
 export interface Contribution {

@@ -14,5 +14,7 @@ export function serializePost(r: PostRow, viewer: string | null, comments: strin
     reactions: { heart: r.heart, fire: r.fire, wow: r.wow, clap: r.clap }, comments,
     hoursAgo: Math.max(0, Math.round((Date.now() - new Date(r.created_at).getTime()) / 3_600_000)),
     unmasked: r.unmasked ?? undefined, mine: !!viewer && r.user_id === viewer,
+    // The creator's id is only exposed after they choose to unmask.
+    creatorId: r.unmasked && r.user_id ? r.user_id : undefined,
   };
 }

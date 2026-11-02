@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { Camera, Clapperboard, Feather, Heart, Music, Play, Send, ShieldCheck, Sparkles, UploadCloud, VenetianMask, X } from "lucide-react";
+import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AiTag, Badge, Button, Card, SectionHead, Shimmer, cx } from "@/components/ui";
 import { askAI } from "@/lib/ai";
@@ -99,9 +100,16 @@ export default function StagePage() {
   };
 
   const unmask = async (p: MaskPost) => {
+    if (!confirm(`Unmask “${p.title}”? Your name will appear on it and it will show on your public profile.`)) return;
     if (!(await act(p.id, { action: "unmask" }))) return toast("Couldn't unmask", "error");
     addContribution({ title: `Unmasked as the creator of “${p.title}”`, kind: "showcase", discipline: KINDS.find((k) => k.id === p.kind)?.disc, points: 15 });
     toast("You unmasked! Take a bow 🎉", "level");
+    load();
+  };
+
+  const remask = async (p: MaskPost) => {
+    if (!(await act(p.id, { action: "remask" }))) return toast("Couldn't mask again", "error");
+    toast(`“${p.title}” is anonymous again`, "info");
     load();
   };
 
@@ -179,7 +187,7 @@ export default function StagePage() {
           <SectionHead title="Masked showcase" sub="Work from classmates you haven't met yet" />
           {!posts ? <Shimmer lines={4} /> : (
             <div className="grid gap-4 sm:grid-cols-2">
-              {posts.map((p) => <PostCard key={p.id} p={p} onReact={(k) => react(p.id, k)} onComment={(c) => comment(p.id, c)} />)}
+              {posts.map((p) => <PostCard key={p.id} p={p} onReact={(k) => react(p.id, k)} onComment={(c) => comment(p.id, c)} onUnmask={() => unmask(p)} onRemask={() => remask(p)} />)}
             </div>
           )}
         </section>
@@ -203,7 +211,12 @@ export default function StagePage() {
                       <Button size="sm" variant={t >= UNMASK_AT ? "primary" : "soft"} className="mt-2 w-full" onClick={() => unmask(p)}>Unmask me ✦</Button>
                     </>
                   )}
-                  {p.unmasked && <div className="mt-2 text-xs text-aqua">Credited to {p.unmasked}</div>}
+                  {p.unmasked && (
+                    <div className="mt-2 flex items-center justify-between gap-2 text-xs">
+                      <span className="text-aqua">Credited to {p.unmasked}</span>
+                      <button onClick={() => remask(p)} className="shrink-0 font-semibold text-mute hover:text-fg">Mask again</button>
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -218,7 +231,13 @@ export default function StagePage() {
   );
 }
 
-function PostCard({ p, onReact, onComment }: { p: MaskPost; onReact: (k: keyof MaskPost["reactions"]) => void; onComment: (c: string) => Promise<void> }) {
+function PostCard({ p, onReact, onComment, onUnmask, onRemask }: {
+  p: MaskPost;
+  onReact: (k: keyof MaskPost["reactions"]) => void;
+  onComment: (c: string) => Promise<void>;
+  onUnmask: () => void;
+  onRemask: () => void;
+}) {
   const [c, setC] = useState("");
   const [checking, setChecking] = useState(false);
   const [hint, setHint] = useState<{ suggestion: string; source: string } | null>(null);
@@ -241,10 +260,25 @@ function PostCard({ p, onReact, onComment }: { p: MaskPost; onReact: (k: keyof M
       {(p.kind === "sketch" || p.kind === "scene") && <MaskArt kind={p.kind} seed={p.seed ?? 1} />}
       <div className="flex flex-1 flex-col p-4">
         <div className="flex items-center justify-between text-xs text-mute">
-          <span className="flex items-center gap-1.5"><VenetianMask size={13} /> {p.unmasked ? <span className="font-semibold text-aqua">{p.unmasked}</span> : p.alias}</span>
-          <span>{p.hoursAgo === 0 ? "just now" : `${p.hoursAgo}h ago`}</span>
+          <span className="flex min-w-0 items-center gap-1.5">
+            <VenetianMask size={13} className="shrink-0" />
+            {p.unmasked ? (
+              p.creatorId ? (
+                <Link href={p.mine ? "/profile" : `/u/${p.creatorId}`} className="truncate font-semibold text-aqua hover:underline">{p.unmasked}</Link>
+              ) : <span className="truncate font-semibold text-aqua">{p.unmasked}</span>
+            ) : <span className="truncate">{p.alias}</span>}
+            {p.mine && <Badge color="#a87a26">You</Badge>}
+          </span>
+          <span className="shrink-0">{p.hoursAgo === 0 ? "just now" : `${p.hoursAgo}h ago`}</span>
         </div>
-        <div className="mt-1.5 font-display text-lg font-semibold">{p.title}</div>
+        <div className="mt-1.5 flex items-start justify-between gap-2">
+          <div className="font-display text-lg font-semibold">{p.title}</div>
+          {p.mine && (p.unmasked ? (
+            <button onClick={onRemask} className="shrink-0 rounded-full border border-line px-2.5 py-1 text-[11px] font-semibold text-mute hover:text-fg">Mask again</button>
+          ) : (
+            <button onClick={onUnmask} className="shrink-0 rounded-full grad-bg px-2.5 py-1 text-[11px] font-semibold shadow-sm">Unmask ✦</button>
+          ))}
+        </div>
         {p.text && <p className={cx("mt-1.5 whitespace-pre-line text-sm leading-relaxed text-fg/85", p.kind === "text" && "font-display text-base italic")}>{p.text}</p>}
         {p.kind === "audio" && p.media && (
           <div className="mt-2 flex items-center gap-3 rounded-xl bg-panel2/50 p-3"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-full grad-bg"><Music size={15} /></span><audio src={p.media} controls preload="metadata" className="h-9 w-full" /></div>

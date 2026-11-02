@@ -27,6 +27,10 @@ export async function POST(req: Request, { params }: Ctx) {
       if (post.user_id !== user.id) return NextResponse.json({ error: "Only the creator can unmask" }, { status: 403 });
       const { error } = await sb.from("posts").update({ unmasked: `${user.name} (${user.dept}, ${user.year} yr)` }).eq("id", id);
       if (error) throw error;
+    } else if (body.action === "remask") {
+      if (post.user_id !== user.id) return NextResponse.json({ error: "Only the creator can mask again" }, { status: 403 });
+      const { error } = await sb.from("posts").update({ unmasked: null }).eq("id", id);
+      if (error) throw error;
     } else {
       return NextResponse.json({ error: "Unknown action" }, { status: 400 });
     }
