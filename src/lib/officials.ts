@@ -37,16 +37,17 @@ export const SVM_INFO = {
   meets: "[e.g. Every Friday, 4:30 pm]",
 };
 
+// Add department, phone, email and photo for each person when available.
 export const FACULTY_COORDINATORS: Official[] = [
-  { name: "[Faculty coordinator name]", role: "Faculty Coordinator", dept: "[Department]", phone: "", email: "", photo: "" },
-  { name: "[Faculty co-coordinator name]", role: "Faculty Co-coordinator", dept: "[Department]", phone: "", email: "", photo: "" },
+  { name: "Balachandra", role: "Faculty Coordinator", dept: "", phone: "", email: "", photo: "" },
+  { name: "Girish", role: "Faculty Coordinator", dept: "", phone: "", email: "", photo: "" },
 ];
 
 export const STUDENT_COORDINATORS: Official[] = [
-  { name: "[Student coordinator name]", role: "Student Coordinator", dept: "CSE", year: 4, phone: "", whatsapp: "", email: "", instagram: "", photo: "" },
-  { name: "[Joint coordinator name]", role: "Joint Coordinator", dept: "ECE", year: 3, phone: "", whatsapp: "", email: "", instagram: "", photo: "" },
-  { name: "[Event head name]", role: "Events & Logistics Head", dept: "MECH", year: 3, phone: "", whatsapp: "", email: "", instagram: "", photo: "" },
-  { name: "[Media head name]", role: "Media & Social Head", dept: "ISE", year: 3, phone: "", whatsapp: "", email: "", instagram: "", photo: "" },
+  { name: "Vineet", role: "Student Coordinator", dept: "", phone: "", whatsapp: "", email: "", instagram: "", photo: "" },
+  { name: "Gautami", role: "Student Coordinator", dept: "", phone: "", whatsapp: "", email: "", instagram: "", photo: "" },
+  { name: "Syed Usman", role: "Student Coordinator", dept: "", phone: "", whatsapp: "", email: "", instagram: "", photo: "" },
+  { name: "Madhu H", role: "Student Coordinator", dept: "", phone: "", whatsapp: "", email: "", instagram: "", photo: "" },
 ];
 
 export const WING_HEADS: WingHead[] = [

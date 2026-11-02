@@ -36,6 +36,7 @@ export async function collectStats({ ids, privateFor }: { ids?: string[]; privat
   let friendsQ = sb.from("friendships").select("requester, addressee").eq("status", "accepted").limit(20000);
   let signupsQ = sb.from("event_signups").select("event_id, user_id, role_id, attended, created_at").limit(50000);
   let recsQ = sb.from("recognitions").select("user_id, event_id, created_at").limit(20000);
+  let interestsQ = sb.from("opportunity_interests").select("user_id").limit(50000);
   if (ids) {
     profilesQ = profilesQ.in("id", ids);
     postsQ = postsQ.in("user_id", ids);
@@ -43,9 +44,10 @@ export async function collectStats({ ids, privateFor }: { ids?: string[]; privat
     friendsQ = friendsQ.or(`requester.in.(${ids.join(",")}),addressee.in.(${ids.join(",")})`);
     signupsQ = signupsQ.in("user_id", ids);
     recsQ = recsQ.in("user_id", ids);
+    interestsQ = interestsQ.in("user_id", ids);
   }
 
-  const [profiles, posts, comments, friendships, signups, recs, events] = await Promise.all([
+  const [profiles, posts, comments, friendships, signups, recs, events, interests, trophies] = await Promise.all([
     rowsOrEmpty<ProfileRow>(profilesQ),
     rowsOrEmpty<PostLite>(postsQ),
     rowsOrEmpty<{ user_id: string }>(commentsQ),
@@ -53,6 +55,8 @@ export async function collectStats({ ids, privateFor }: { ids?: string[]; privat
     rowsOrEmpty<SignupRow>(signupsQ),
     rowsOrEmpty<RecLite>(recsQ),
     rowsOrEmpty<EventLite>(sb.from("events").select("id, created_by, roles, starts_at, cancelled").limit(5000)),
+    rowsOrEmpty<{ user_id: string }>(interestsQ),
+    rowsOrEmpty<{ member_ids: string[] | null; won_on: string | null; created_at: string }>(sb.from("club_trophies").select("member_ids, won_on, created_at").limit(5000)),
   ]);
 
   const eventById = new Map(events.map((e) => [e.id, e]));
@@ -113,6 +117,18 @@ export async function collectStats({ ids, privateFor }: { ids?: string[]; privat
     m.stats.recognitions++;
     if (r.event_id) m.stats.stars++;
     if (recentTime(r.created_at)) m.recent += 20;
+  }
+  for (const i of interests) {
+    const m = out.get(i.user_id);
+    if (m) m.stats.interests++;
+  }
+  for (const t of trophies) {
+    for (const id of t.member_ids ?? []) {
+      const m = out.get(id);
+      if (!m) continue;
+      m.stats.trophies++;
+      if (recentTime(t.won_on ?? t.created_at)) m.recent += 30;
+    }
   }
   for (const e of events) {
     const m = e.created_by ? out.get(e.created_by) : undefined;

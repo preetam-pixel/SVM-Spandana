@@ -129,6 +129,7 @@ export default function TeamPage() {
         <Users className="shrink-0 text-iris" size={28} />
         <div className="flex-1">
           <div className="font-display text-lg font-semibold">Want to help run SVM?</div>
+          <p className="text-sm text-mute">See what the club has won in the <a href="/club" className="font-semibold text-iris hover:underline">SVM Club trophy cabinet</a>, and raise your hand for the next fest in <a href="/opportunities" className="font-semibold text-iris hover:underline">Opportunities</a>.</p>
           <p className="text-sm text-mute">Wing heads are picked from active members. Climb the Confidence Ladder to Performer or Mentor and message any coordinator above.</p>
         </div>
       </Card>

@@ -1,7 +1,7 @@
 import type { Stats } from "./types";
 
 export type Tier = "bronze" | "silver" | "gold";
-export type AchievementCategory = "explorer" | "showcase" | "events" | "community" | "organizer";
+export type AchievementCategory = "explorer" | "showcase" | "events" | "fests" | "community" | "organizer";
 
 export interface AchievementDef {
   id: string;
@@ -19,6 +19,7 @@ export const TIER_COLOR: Record<Tier, string> = { bronze: "#b5651d", silver: "#7
 
 export const CATEGORIES: { id: AchievementCategory; label: string; sub: string }[] = [
   { id: "events", label: "Events", sub: "Show up, help out, take the stage" },
+  { id: "fests", label: "Fests & competitions", sub: "Represent SVM beyond campus" },
   { id: "showcase", label: "Showcase", sub: "Share your work in Mask Mode" },
   { id: "community", label: "Community", sub: "Friends, squads and recognition" },
   { id: "explorer", label: "Explorer", sub: "Try every art form" },
@@ -44,6 +45,10 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { id: "backstage-hero", name: "Backstage Hero", desc: "Work 3 backstage roles at events", icon: "Wrench", tier: "silver", category: "events", stat: "crew", goal: 3 },
   { id: "spotlight", name: "In the Spotlight", desc: "Perform on stage at an SVM event", icon: "MicVocal", tier: "silver", category: "events", stat: "stage", goal: 1 },
   { id: "star-night", name: "Star of the Night", desc: "Be named an event star by SVM", icon: "Star", tier: "gold", category: "events", stat: "stars", goal: 1 },
+  // Fests & competitions
+  { id: "fest-ready", name: "Fest Ready", desc: "Raise your hand for a fest or competition event", icon: "Flag", tier: "bronze", category: "fests", stat: "interests", goal: 1 },
+  { id: "all-rounder", name: "All-Rounder", desc: "Show interest in 3 competition events", icon: "Rocket", tier: "silver", category: "fests", stat: "interests", goal: 3 },
+  { id: "represented-svm", name: "Represented SVM", desc: "Be part of an SVM trophy at a fest or competition", icon: "Trophy", tier: "gold", category: "fests", stat: "trophies", goal: 1 },
   // Community
   { id: "connector", name: "Connector", desc: "Make your first friend on Spandana", icon: "UserPlus", tier: "bronze", category: "community", stat: "friends", goal: 1 },
   { id: "inner-circle", name: "Inner Circle", desc: "Make 10 friends", icon: "Users", tier: "silver", category: "community", stat: "friends", goal: 10 },
@@ -59,7 +64,7 @@ export const ACHIEVEMENT_MAP = Object.fromEntries(ACHIEVEMENTS.map((a) => [a.id,
 
 export const EMPTY_STATS: Stats = {
   sparkDone: false, stamps: 0, quests: 0, posts: 0, unmasked: 0, reactions: 0, comments: 0, friends: 0,
-  signups: 0, attended: 0, crew: 0, stage: 0, stars: 0, recognitions: 0, hosted: 0, biggestEvent: 0,
+  signups: 0, attended: 0, crew: 0, stage: 0, stars: 0, recognitions: 0, hosted: 0, biggestEvent: 0, interests: 0, trophies: 0,
 };
 
 export interface Progress {

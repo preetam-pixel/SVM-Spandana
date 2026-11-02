@@ -305,6 +305,8 @@ export interface Stats {
   recognitions: number;
   hosted: number;
   biggestEvent: number; // most sign-ups on an event this member organised
+  interests: number; // opportunity categories marked "I'm interested"
+  trophies: number; // club trophies this member is part of
 }
 
 export interface LeaderRow {
@@ -316,4 +318,58 @@ export interface LeaderRow {
   score: number;
   badges: number;
   core: boolean;
+}
+
+/* ---------- Club trophies and opportunities (migration 004) ---------- */
+
+export type CompLevel = "college" | "inter-college" | "university" | "zonal" | "national" | "international";
+export type TrophyPosition = "winner" | "runner-up" | "third" | "special" | "participation";
+
+export interface ClubTrophy {
+  id: string;
+  title: string;
+  fest: string;
+  level: CompLevel;
+  position: TrophyPosition;
+  discipline: DisciplineId | null;
+  wonOn: string | null; // YYYY-MM-DD
+  members: { id: string; name: string; avatar: string }[];
+  team: string;
+  description: string;
+  photo: string | null;
+  mine: boolean;
+}
+
+export interface OpportunityCategory {
+  id: string;
+  name: string;
+  discipline: DisciplineId;
+  team: boolean;
+}
+
+export interface Opportunity {
+  id: string;
+  title: string;
+  organiser: string;
+  level: CompLevel;
+  kind: "fest" | "competition" | "audition" | "workshop" | "scholarship";
+  location: string;
+  startsOn: string | null;
+  endsOn: string | null;
+  deadline: string | null;
+  link: string;
+  description: string;
+  categories: (OpportunityCategory & { interested: number })[];
+  interested: number; // distinct members
+  mine: string[]; // category ids the viewer marked
+  friendsInterested: number;
+}
+
+export interface Milestone {
+  id: string;
+  label: string;
+  unit: string;
+  icon: string;
+  value: number;
+  tiers: number[];
 }
