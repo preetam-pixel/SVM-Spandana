@@ -23,7 +23,7 @@ export async function GET(req: Request) {
     const { data, error } = await query;
     if (error) throw error;
 
-    const rows = await friendRows(me.id);
+    const rows = await friendRows(me.id, { optional: true });
     return NextResponse.json({ people: (data as ProfileRow[]).map((r) => toCard(r, statusWith(me.id, r.id, rows))) });
   } catch (e) {
     return failure(e);

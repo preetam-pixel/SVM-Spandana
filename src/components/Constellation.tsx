@@ -8,7 +8,7 @@ import ForceGraph2D, { type ForceGraphMethods } from "react-force-graph-2d";
 import { COLLAB_LINKS, DISC_MAP, LADDER, STUDENTS } from "@/lib/data";
 
 type Kind = "demo" | "me" | "friend";
-interface GNode { id: string; name: string; sub: string; color: string; val: number; kind: Kind; x?: number; y?: number }
+interface GNode { id: string; name: string; sub: string; color: string; val: number; kind: Kind; x?: number; y?: number; fx?: number; fy?: number }
 interface GLink { source: string | GNode; target: string | GNode; cross: boolean; mine?: boolean }
 
 export interface ConstellationFriend { id: string; name: string; dept: string; year: number }
@@ -46,7 +46,7 @@ export default function Constellation({ myLinks = [], friends = [], height = 360
       source: l.source, target: l.target, cross: byId.get(l.source)!.primary !== byId.get(l.target)!.primary,
     }));
     if (myLinks.length || friends.length) {
-      nodes.push({ id: "me", name: "You", sub: "Your profile", color: "#a87a26", val: 7, kind: "me" });
+      nodes.push({ id: "me", name: "You", sub: "Your profile", color: "#a87a26", val: 7, kind: "me", fx: 0, fy: 0 });
       for (const id of myLinks) {
         if (!byId.has(id)) {
           const s = STUDENTS.find((x) => x.id === id);
@@ -114,10 +114,17 @@ export default function Constellation({ myLinks = [], friends = [], height = 360
             ctx.stroke();
           }
           if (n.kind !== "demo") {
-            ctx.font = `600 ${Math.max(9, 12 / scale)}px sans-serif`;
-            ctx.fillStyle = n.kind === "me" ? "#a87a26" : "#5c3a21";
+            // "YOU" sits above the centre dot; friend names go below theirs so the two don't collide.
+            const fontPx = Math.max(9, 12 / scale);
+            const label = n.kind === "me" ? "YOU" : n.name.split(" ")[0];
+            const ly = n.kind === "me" ? n.y! - r - 8 : n.y! + r + 4 + fontPx;
+            ctx.font = `600 ${fontPx}px sans-serif`;
             ctx.textAlign = "center";
-            ctx.fillText(n.kind === "me" ? "YOU" : n.name.split(" ")[0], n.x!, n.y! - r - 8);
+            ctx.lineWidth = 3 / scale;
+            ctx.strokeStyle = "rgba(255,255,255,0.9)"; // halo keeps names readable over other dots
+            ctx.strokeText(label, n.x!, ly);
+            ctx.fillStyle = n.kind === "me" ? "#a87a26" : "#5c3a21";
+            ctx.fillText(label, n.x!, ly);
           }
         }}
       />

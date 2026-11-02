@@ -6,10 +6,10 @@ import { supabaseAuth } from "@/lib/supabase/server";
 export const runtime = "nodejs";
 
 export async function POST(req: Request) {
-  const { phone: raw, mode } = (await req.json()) as { phone: string; mode: "login" | "register" };
-  const phone = normalizePhone(raw);
-  if (!phone) return NextResponse.json({ error: "Enter a valid 10-digit Indian mobile number." }, { status: 400 });
   try {
+    const { phone: raw, mode } = (await req.json()) as { phone: string; mode: "login" | "register" };
+    const phone = normalizePhone(raw);
+    if (!phone) return NextResponse.json({ error: "Enter a valid 10-digit Indian mobile number." }, { status: 400 });
     const exists = await phoneRegistered(phone);
     if (mode === "login" && !exists) return NextResponse.json({ error: "No account with this number yet. Please register first." }, { status: 404 });
     if (mode === "register" && exists) return NextResponse.json({ error: "This number is already registered. Please log in." }, { status: 409 });

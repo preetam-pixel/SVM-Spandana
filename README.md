@@ -32,7 +32,7 @@ Spandana uses **Supabase**: hosted Postgres for data, Supabase Auth for phone-OT
 
 **1. Create the project.** At https://supabase.com, click **New project**, pick region **Mumbai (ap-south-1)**, and set a database password.
 
-**2. Create the tables.** Go to **SQL Editor → New query**, paste [supabase/schema.sql](supabase/schema.sql) and click **Run**. This creates `profiles`, `posts` and `comments` (with RLS on), the `add_reaction` function, the public `media` storage bucket, and seed showcase posts.
+**2. Create the tables.** Go to **SQL Editor → New query**, paste [supabase/schema.sql](supabase/schema.sql) and click **Run**. This creates `profiles`, `posts`, `comments` and `friendships` (with RLS on), the `add_reaction` function, the public `media` storage bucket, and seed showcase posts. *Already ran an older `schema.sql`?* Also run [supabase/migrations/002_friends.sql](supabase/migrations/002_friends.sql) once. Until you do, People and profiles still work but friend requests stay off.
 
 **3. Turn on phone OTP.** Go to **Authentication → Sign In / Providers → Phone** and enable it.
 - **Real SMS:** choose **Twilio Verify**. Get the Account SID and Auth Token from https://console.twilio.com, and the Verify Service SID from **Verify → Services → Create new**. A Twilio trial only texts numbers you've verified in Twilio.

@@ -104,7 +104,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
               update((p) => ({ ...p, examMode: !p.examMode }));
               toast(profile.examMode ? "Exam Mode off. Welcome back!" : "Exam Mode on: only short sessions, streak frozen", "info");
             }}
-            className={cx("flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold transition", profile.examMode ? "border-aqua/50 bg-aqua/10 text-aqua" : "border-line bg-white text-mute hover:text-fg")}
+            className={cx("flex items-center gap-2 whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-semibold transition", profile.examMode ? "border-aqua/50 bg-aqua/10 text-aqua" : "border-line bg-white text-mute hover:text-fg")}
           >
             <BookOpenCheck size={14} /> Exam Mode {profile.examMode ? "ON" : "OFF"}
           </button>

@@ -138,6 +138,7 @@ export interface Contribution {
   discipline?: DisciplineId;
   date: string;
   points: number;
+  ref?: string; // one-time actions (e.g. "unmask:<postId>") are only counted once
 }
 
 export interface Profile {

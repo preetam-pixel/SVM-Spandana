@@ -1,8 +1,8 @@
 "use client";
 
-import { Search, UserPlus, Users } from "lucide-react";
+import { Info, Search, UserPlus, Users } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { FriendButton } from "@/components/FriendButton";
 import { Avatar, Badge, Card, DiscIcon, SectionHead, Shimmer, cx } from "@/components/ui";
 import { DEPTS, LADDER } from "@/lib/data";
@@ -10,27 +10,48 @@ import { archetype } from "@/lib/engine";
 import type { PersonCard } from "@/lib/types";
 
 type Tab = "discover" | "friends" | "requests";
+type Lists = { friends: PersonCard[]; incoming: PersonCard[]; outgoing: PersonCard[] };
+const NO_LISTS: Lists = { friends: [], incoming: [], outgoing: [] };
 
 export default function PeoplePage() {
   const [tab, setTab] = useState<Tab>("discover");
   const [q, setQ] = useState("");
   const [dept, setDept] = useState("");
   const [people, setPeople] = useState<PersonCard[] | null>(null);
-  const [lists, setLists] = useState<{ friends: PersonCard[]; incoming: PersonCard[]; outgoing: PersonCard[] } | null>(null);
+  const [lists, setLists] = useState<Lists | null>(null);
+  const [setup, setSetup] = useState(""); // set when the friends migration hasn't been run yet
+  const searchId = useRef(0);
 
   const loadLists = useCallback(() => {
-    fetch("/api/friends").then((r) => r.json()).then((d) => d.friends && setLists(d)).catch(() => {});
+    fetch("/api/friends")
+      .then((r) => r.json())
+      .then((d) => {
+        setLists(d.friends ? d : NO_LISTS);
+        setSetup(d.setup ?? "");
+      })
+      .catch(() => setLists(NO_LISTS));
   }, []);
+
+  const loadPeople = useCallback(() => {
+    const id = ++searchId.current; // ignore replies to searches the user has already typed past
+    fetch(`/api/people?${new URLSearchParams({ q, dept })}`)
+      .then((r) => r.json())
+      .then((d) => id === searchId.current && setPeople(d.people ?? []))
+      .catch(() => id === searchId.current && setPeople([]));
+  }, [q, dept]);
 
   useEffect(loadLists, [loadLists]);
 
   useEffect(() => {
-    const t = setTimeout(() => {
-      const params = new URLSearchParams({ q, dept });
-      fetch(`/api/people?${params}`).then((r) => r.json()).then((d) => setPeople(d.people ?? [])).catch(() => setPeople([]));
-    }, 250);
+    const t = setTimeout(loadPeople, 250);
     return () => clearTimeout(t);
-  }, [q, dept]);
+  }, [loadPeople]);
+
+  // After any friend action, refresh both the tabs and the directory so every card shows the new status.
+  const refresh = useCallback(() => {
+    loadLists();
+    loadPeople();
+  }, [loadLists, loadPeople]);
 
   const shown = tab === "discover" ? people : tab === "friends" ? lists?.friends ?? null : lists ? [...lists.incoming, ...lists.outgoing] : null;
   const incoming = lists?.incoming.length ?? 0;
@@ -73,7 +94,12 @@ export default function PeoplePage() {
         )}
       </div>
 
-      {tab === "requests" && lists && lists.incoming.length > 0 && <SectionHead title="Waiting for you" sub="Accept to connect" />}
+      {setup && (
+        <div className="flex items-start gap-2 rounded-2xl border border-gold/40 bg-sand/20 p-3 text-sm">
+          <Info size={16} className="mt-0.5 shrink-0 text-gold" />
+          <span>Friend requests aren't switched on yet. You can still browse members and open their profiles. <span className="text-mute">(Organizers: {setup})</span></span>
+        </div>
+      )}
 
       {!shown ? (
         <Card><Shimmer lines={4} /></Card>
@@ -84,9 +110,22 @@ export default function PeoplePage() {
             {tab === "discover" ? "No members match yet. As classmates register, they'll appear here." : tab === "friends" ? "No friends yet. Discover members and send a request." : "No pending requests."}
           </p>
         </Card>
+      ) : tab === "requests" && lists ? (
+        <div className="space-y-6">
+          {([["Waiting for you", "Accept to connect", lists.incoming], ["Sent", "Waiting for them to accept", lists.outgoing]] as const).map(([title, sub, list]) =>
+            list.length > 0 && (
+              <section key={title}>
+                <SectionHead title={title} sub={sub} />
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {list.map((p) => <Person key={`${tab}-${p.id}-${p.status}`} p={p} onChange={refresh} />)}
+                </div>
+              </section>
+            ),
+          )}
+        </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {shown.map((p) => <Person key={`${tab}-${p.id}`} p={p} onChange={loadLists} />)}
+          {shown.map((p) => <Person key={`${tab}-${p.id}-${p.status}`} p={p} onChange={refresh} />)}
         </div>
       )}
     </div>

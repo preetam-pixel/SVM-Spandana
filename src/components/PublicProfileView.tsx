@@ -38,8 +38,8 @@ export function PublicProfileView({ person, status, friends, mutual, works }: {
               {friends !== undefined && <Badge>{friends} friend{friends === 1 ? "" : "s"}{mutual ? ` · ${mutual} mutual` : ""}</Badge>}
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="hidden gap-2 text-center sm:flex">
+          <div className="flex w-full items-center justify-between gap-3 sm:w-auto">
+            <div className="flex gap-2 text-center">
               <div className="rounded-xl bg-panel2/60 px-3 py-2"><div className="font-display text-xl font-bold">{person.points}</div><div className="text-[11px] text-mute">points</div></div>
               <div className="rounded-xl bg-panel2/60 px-3 py-2"><div className="font-display text-xl font-bold">{person.stamps.length}/9</div><div className="text-[11px] text-mute">stamps</div></div>
             </div>
