@@ -373,3 +373,25 @@ export interface Milestone {
   value: number;
   tiers: number[];
 }
+
+/** Live numbers for the core-member dashboard (/core). */
+export interface CoreDashboard {
+  kpis: {
+    members: number; newThisWeek: number; sparkPct: number; core: number;
+    upcomingEvents: number; upcomingSignups: number; checkinRate: number | null; handsRaised: number; trophies: number;
+  };
+  attention: { tone: "urgent" | "info"; text: string; href: string }[];
+  upcoming: {
+    id: string; title: string; startsAt: number; venue: string; discipline: DisciplineId; going: number; checkinCode: string;
+    roles: { label: string; filled: number; slots: number }[]; openSlots: number;
+  }[];
+  past: { id: string; title: string; startsAt: number; signedUp: number; attended: number }[];
+  fests: {
+    id: string; title: string; deadline: string | null; startsOn: string | null; people: number;
+    categories: { id: string; name: string; discipline: DisciplineId; people: { id: string; name: string }[] }[];
+  }[];
+  newMembers: { id: string; name: string; avatar: string; dept: string; year: number; createdAt: number; sparkDone: boolean; declared: DisciplineId[] }[];
+  branches: { dept: string; members: number }[];
+  artForms: { id: DisciplineId; name: string; color: string; members: number }[];
+  team: { id: string; name: string; avatar: string; dept: string; year: number }[];
+}

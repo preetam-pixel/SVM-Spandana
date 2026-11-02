@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { Activity, BookOpenCheck, CalendarDays, Contact, Flag, Medal, Menu, Radio, Sparkles, Stamp, Trophy, UserRound, Users, UsersRound, VenetianMask, X } from "lucide-react";
+import { Activity, BookOpenCheck, CalendarDays, ClipboardList, Contact, Flag, Medal, Menu, Radio, Sparkles, Stamp, Trophy, UserRound, Users, UsersRound, VenetianMask, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -28,6 +28,7 @@ const SECONDARY = [
   { href: "/team", label: "SVM Team", icon: Contact },
   { href: "/profile", label: "Profile", icon: UserRound },
 ];
+const CORE_LINK = { href: "/core", label: "Core Dashboard", icon: ClipboardList };
 const EXTRA = [
   { href: "/cockpit", label: "Organizer Cockpit", icon: BookOpenCheck },
   { href: "/live", label: "Live Stage", icon: Radio },
@@ -135,6 +136,9 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
           ))}
         </nav>
         <div className="mt-auto space-y-3">
+          {account.role === "core" && (
+            <Link href="/core" className="flex items-center gap-2 rounded-xl grad-bg px-3 py-2.5 text-xs font-semibold"><ClipboardList size={15} /> Core Dashboard</Link>
+          )}
           <Link href="/cockpit" className="flex items-center gap-2 rounded-xl border border-line px-3 py-2.5 text-xs text-mute hover:text-fg"><BookOpenCheck size={15} /> Organizer Cockpit</Link>
           <Link href="/profile" className="flex items-center gap-3 rounded-xl border border-line bg-white p-3 hover:bg-panel2/50">
             <Avatar name={account.name} src={account.avatar} />
@@ -192,7 +196,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
                 <button onClick={() => setMore(false)} className="rounded-full p-1.5 text-mute hover:bg-fg/5" aria-label="Close"><X size={18} /></button>
               </div>
               <div className="grid grid-cols-3 gap-2">
-                {[...SECONDARY, ...EXTRA].map((n) => (
+                {[...SECONDARY, ...(account.role === "core" ? [CORE_LINK] : []), ...EXTRA].map((n) => (
                   <Link key={n.href} href={n.href} className={cx("flex flex-col items-center gap-1.5 rounded-2xl border p-3 text-center text-xs font-medium", isActive(path, n.href) ? "border-iris bg-iris text-white" : "border-line bg-white text-fg")}>
                     <n.icon size={20} /> {n.label}
                   </Link>

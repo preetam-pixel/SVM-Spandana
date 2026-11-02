@@ -37,6 +37,7 @@ export default function Cockpit() {
           </div>
           <div className="flex items-center gap-2">
             <Badge color="#a87a26">Demo data · simulated</Badge>
+            <Link href="/core" className="flex items-center gap-1 rounded-full border border-line px-3 py-1.5 text-xs font-semibold hover:bg-fg/5"><Gauge size={13} /> Live dashboard</Link>
             <Link href="/events" className="flex items-center gap-1 rounded-full grad-bg px-3 py-1.5 text-xs font-semibold"><CalendarPlus size={13} /> Real events</Link>
             <Link href="/home" className="flex items-center gap-1 rounded-full border border-line px-3 py-1.5 text-xs hover:bg-fg/5"><ArrowLeft size={13} /> Student view</Link>
           </div>
