@@ -133,9 +133,14 @@ Done in a cloud container **without** the `.env` keys, so verified with typechec
 - Tested live: opportunity interest toggles, core-only actions, trophy with members, milestones, badges; test data removed.
 - Still to do: core fills in VTU Youth Festival dates and link, adds SVM's real past trophies, and coordinator contact details.
 
+### Fourth session: core workspace and endorsements
+- **Core workspace** `/core/*` with its own dark layout (`src/app/core/layout.tsx`, gated to `role = 'core'`, shows a log-in / demo-core gate otherwise): Dashboard (`/core`, live data from `/api/core`), Endorse work (`/core/showcase`), Members (`/core/members`, `/api/core/members`, filters + CSV, no contact details, only unmasked works counted), Post an event (moved from `/events/new` to `/core/events/new`), Insights (the old Organizer Cockpit, moved to `/core/insights`; `/cockpit` redirects there).
+- Member app: sidebar and More menu grouped (Grow / You / SVM); core members get a dark "Core workspace" entry. Core-only actions inside member pages use `Button variant="core"`, `CoreTag` or the dark "Organiser tools · Core only" frame (`ui.tsx`, `.core-bg` in `globals.css`).
+- **Endorsements** ("SVM Core Picks"): **migration 005** (`supabase/migrations/005_endorsements.sql`) adds `posts.endorsed_by / endorsed_at / endorse_note`. **Not yet applied on the live DB**; until it is, endorsing returns a 503 that names the file and everything else works. `/api/posts` POST actions `endorse` / `unendorse` (core only, not on your own work); `GET /api/posts?picks=1`. Endorsed posts get a gold `.core-pick` card and ribbon in Mask Mode, a Core Picks section, a home-page spotlight (`components/CorePicks.tsx`) and the gold **Core Pick** badge (`stats.endorsed`, masked works only count for their creator).
+
 ## 6. Next steps (in order)
 
-1. **Run the migrations on the live DB** (the user must do this, or an agent with dashboard access): SQL editor → paste and run `supabase/migrations/002_friends.sql` (if not done yet), then `supabase/migrations/003_events_achievements.sql`. Until then those features show what to run; nothing else breaks.
+1. **Run the migrations on the live DB** (the user must do this, or an agent with dashboard access): 002–004 are applied; **run `supabase/migrations/005_endorsements.sql`** in the SQL editor. Until then endorsements show what to run; nothing else breaks.
 2. **Make the first core member:** `update public.profiles set role = 'core' where phone = '+91…';` (their registered number). They can promote others in the app (profile → "Make core member").
 3. **Merge the branch** `claude/trusting-thompson-fzkh1k` into `main` (open a PR on GitHub).
 4. **Smoke test against the live project** with the real `.env`: demo core login → post an event → Find people → invite; demo student → sign up → check in with the code; core → star → Wall of Fame. Also friends (`/people`) and Mask Mode unmask.

@@ -58,6 +58,18 @@ body {
   color: #fffaf0;
 }
 
+/* Core-member surfaces: dark walnut with sand text, never used for member actions. */
+.core-bg {
+  background: linear-gradient(115deg, #2a1a10, #3b2416 70%, #4a2e1a);
+  color: #f6efe2;
+}
+
+/* A work SVM core endorsed: gold edge and glow (outranks .card's border). */
+.card.core-pick {
+  border-color: rgb(168 122 38 / 0.65);
+  box-shadow: 0 0 0 1px rgb(168 122 38 / 0.35), 0 14px 34px -16px rgb(168 122 38 / 0.55);
+}
+
 .card {
   background: #fffdf9;
   border: 1px solid var(--color-line);

@@ -90,6 +90,7 @@ export interface MaskPost {
   media?: string; // URL of an uploaded photo / audio / video
   mime?: string;
   creatorId?: string; // only present once the creator has unmasked
+  endorsement?: { by: string; note?: string; at: number }; // an SVM core "Core Pick"
 }
 
 export type FriendStatus = "self" | "none" | "outgoing" | "incoming" | "friends";
@@ -307,6 +308,7 @@ export interface Stats {
   biggestEvent: number; // most sign-ups on an event this member organised
   interests: number; // opportunity categories marked "I'm interested"
   trophies: number; // club trophies this member is part of
+  endorsed: number; // works picked by SVM core (masked ones only count for their creator)
 }
 
 export interface LeaderRow {
@@ -394,4 +396,11 @@ export interface CoreDashboard {
   branches: { dept: string; members: number }[];
   artForms: { id: DisciplineId; name: string; color: string; members: number }[];
   team: { id: string; name: string; avatar: string; dept: string; year: number }[];
+}
+
+/** A row on the core Members page (no contact details). */
+export interface CoreMember {
+  id: string; name: string; avatar: string; dept: string; year: number; core: boolean;
+  sparkDone: boolean; declared: DisciplineId[]; level: number; joinedAt: number;
+  signups: number; attended: number; works: number; interests: number; trophies: number; recognitions: number;
 }

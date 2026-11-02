@@ -1,16 +1,25 @@
 import { NextResponse } from "next/server";
 import { currentUser, failure } from "@/lib/server/auth";
+import { isCore, profilesById } from "@/lib/server/club";
+import { isMissing } from "@/lib/server/setup";
 import { serializePost, type PostRow } from "@/lib/server/posts";
 import { MEDIA_BUCKET, admin } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 
-export async function GET() {
+/** The Mask Mode showcase, newest first. `?picks=1` returns only works endorsed by SVM core, latest first. */
+export async function GET(req: Request) {
   try {
     const user = await currentUser();
     const sb = admin();
-    const { data: rows, error } = await sb.from("posts").select("*").order("created_at", { ascending: false }).limit(100);
-    if (error) throw error;
+    const picks = new URL(req.url).searchParams.get("picks") === "1";
+    const { data: rows, error } = picks
+      ? await sb.from("posts").select("*").not("endorsed_at", "is", null).order("endorsed_at", { ascending: false }).limit(12)
+      : await sb.from("posts").select("*").order("created_at", { ascending: false }).limit(100);
+    if (error) {
+      if (picks && isMissing(error)) return NextResponse.json({ core: isCore(user), posts: [] }); // migrations/005 not run yet
+      throw error;
+    }
     const ids = (rows ?? []).map((r) => r.id);
     const { data: cs, error: cErr } = ids.length
       ? await sb.from("comments").select("post_id, body").in("post_id", ids).order("created_at")
@@ -18,7 +27,12 @@ export async function GET() {
     if (cErr) throw cErr;
     const byPost = new Map<string, string[]>();
     for (const c of cs ?? []) byPost.set(c.post_id, [...(byPost.get(c.post_id) ?? []), c.body]);
-    return NextResponse.json({ posts: (rows as PostRow[]).map((r) => serializePost(r, user?.id ?? null, byPost.get(r.id) ?? [])) });
+    const people = await profilesById((rows as PostRow[]).map((r) => r.endorsed_by));
+    const names = new Map([...people].map(([id, p]) => [id, p.name]));
+    return NextResponse.json({
+      core: isCore(user),
+      posts: (rows as PostRow[]).map((r) => serializePost(r, user?.id ?? null, byPost.get(r.id) ?? [], names)),
+    });
   } catch (e) {
     return failure(e);
   }

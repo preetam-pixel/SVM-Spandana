@@ -2,7 +2,7 @@
 
 import {
   ArrowLeft, Ban, Check, ClipboardCheck, Clock, Copy, Download, KeyRound, MapPin, MessageCircle, Pencil, Search, Send,
-  Sparkles, Star, Trash2, UserCheck, Users,
+  ShieldCheck, Sparkles, Star, Trash2, UserCheck, Users,
 } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -281,12 +281,19 @@ function Organiser({ d, act, reload }: { d: EventDetail; act: Act; reload: () =>
   };
 
   return (
-    <div className="space-y-6">
-      <Card className="border-iris/30">
+    <div className="space-y-4 rounded-3xl border-2 border-fg/15 bg-fg/[0.03] p-3 sm:p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl core-bg px-4 py-3">
+        <div>
+          <div className="font-display text-lg font-semibold">Organiser tools</div>
+          <div className="text-xs text-sand/80">Check-in, attendance, stars and invites. Members never see this.</div>
+        </div>
+        <span className="inline-flex items-center gap-1 rounded-full border border-sand/40 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-sand"><ShieldCheck size={11} /> Core only</span>
+      </div>
+      <Card>
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <SectionHead title="Organiser tools" sub="Only SVM core members see this" />
+          <SectionHead title="Event controls" />
           <div className="flex flex-wrap gap-2">
-            <Link href={`/events/new?id=${e.id}`}><Button size="sm" variant="soft"><Pencil size={14} /> Edit</Button></Link>
+            <Link href={`/core/events/new?id=${e.id}`}><Button size="sm" variant="soft"><Pencil size={14} /> Edit</Button></Link>
             <Button size="sm" variant="ghost" onClick={cancel}><Ban size={14} /> {e.cancelled ? "Restore" : "Cancel event"}</Button>
             <Button size="sm" variant="ghost" onClick={remove} aria-label="Delete event"><Trash2 size={14} /></Button>
           </div>

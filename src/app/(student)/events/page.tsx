@@ -57,8 +57,8 @@ export default function EventsPage() {
           </div>
           {data?.core && (
             <div className="flex flex-wrap gap-2">
-              <Link href="/events/new"><Button><CalendarPlus size={16} /> Post an event</Button></Link>
-              <Button variant="soft" onClick={() => setNoticeOpen((v) => !v)}><Megaphone size={16} /> Post a notice</Button>
+              <Link href="/core/events/new"><Button variant="core"><CalendarPlus size={16} /> Post an event</Button></Link>
+              <Button variant="core" onClick={() => setNoticeOpen((v) => !v)}><Megaphone size={16} /> Post a notice</Button>
             </div>
           )}
         </div>
@@ -126,7 +126,7 @@ export default function EventsPage() {
             <p className="mt-3 text-sm text-mute">
               {tab === "upcoming" ? "No upcoming events yet. Check back soon!" : tab === "mine" ? "You haven't signed up for anything yet. Pick an upcoming event and join in any role." : "No past events in the last two months."}
             </p>
-            {tab === "upcoming" && data.core && <Link href="/events/new" className="mt-4 inline-block"><Button size="sm"><CalendarPlus size={14} /> Post the first one</Button></Link>}
+            {tab === "upcoming" && data.core && <Link href="/core/events/new" className="mt-4 inline-block"><Button size="sm" variant="core"><CalendarPlus size={14} /> Post the first one</Button></Link>}
           </Card>
         ) : (
           <div className="grid gap-4 md:grid-cols-2">

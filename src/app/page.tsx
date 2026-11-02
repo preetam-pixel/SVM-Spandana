@@ -49,7 +49,7 @@ export default function Landing() {
     const err = await loadDemo(as);
     setBusy(false);
     if (err) toast(err, "error");
-    else router.push(as === "core" ? "/events" : "/home");
+    else router.push(as === "core" ? "/core" : "/home");
   };
 
   return (
@@ -72,7 +72,7 @@ export default function Landing() {
         {/* Above the banner on phones; floating over the artwork's top corner on wide screens */}
         <header className="relative z-20 flex justify-end gap-2 px-3 py-2.5 text-xs sm:px-6 sm:text-sm wide:absolute wide:inset-x-0 wide:top-0 wide:py-4">
           <Link href="/live" className={`${glass} rounded-full px-3 py-1.5 font-medium text-iris shadow-sm hover:bg-[#fff8ea]`}>Live Stage</Link>
-          <Link href="/cockpit" className={`${glass} rounded-full px-3.5 py-1.5 font-semibold text-fg shadow-sm hover:bg-[#fff8ea]`}>Organizer Cockpit</Link>
+          <Link href="/core" className="rounded-full core-bg px-3.5 py-1.5 font-semibold shadow-sm hover:brightness-125">For SVM core</Link>
         </header>
 
         {/* Narrow / portrait screens: show the full artwork as a banner */}

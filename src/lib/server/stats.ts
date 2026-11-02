@@ -47,7 +47,11 @@ export async function collectStats({ ids, privateFor }: { ids?: string[]; privat
     interestsQ = interestsQ.in("user_id", ids);
   }
 
-  const [profiles, posts, comments, friendships, signups, recs, events, interests, trophies] = await Promise.all([
+  // Separate query: endorsement columns come from migrations/005 and may not exist yet.
+  let endorsedQ = sb.from("posts").select("user_id, unmasked").not("endorsed_at", "is", null).not("user_id", "is", null).limit(20000);
+  if (ids) endorsedQ = endorsedQ.in("user_id", ids);
+
+  const [profiles, posts, comments, friendships, signups, recs, events, interests, trophies, endorsed] = await Promise.all([
     rowsOrEmpty<ProfileRow>(profilesQ),
     rowsOrEmpty<PostLite>(postsQ),
     rowsOrEmpty<{ user_id: string }>(commentsQ),
@@ -57,6 +61,7 @@ export async function collectStats({ ids, privateFor }: { ids?: string[]; privat
     rowsOrEmpty<EventLite>(sb.from("events").select("id, created_by, roles, starts_at, cancelled").limit(5000)),
     rowsOrEmpty<{ user_id: string }>(interestsQ),
     rowsOrEmpty<{ member_ids: string[] | null; won_on: string | null; created_at: string }>(sb.from("club_trophies").select("member_ids, won_on, created_at").limit(5000)),
+    rowsOrEmpty<{ user_id: string; unmasked: string | null }>(endorsedQ),
   ]);
 
   const eventById = new Map(events.map((e) => [e.id, e]));
@@ -86,6 +91,10 @@ export async function collectStats({ ids, privateFor }: { ids?: string[]; privat
     m.stats.posts++;
     m.stats.reactions += (post.heart ?? 0) + (post.fire ?? 0) + (post.wow ?? 0) + (post.clap ?? 0);
     if (post.unmasked && recentTime(post.created_at)) m.recent += 5;
+  }
+  for (const post of endorsed) {
+    const m = out.get(post.user_id);
+    if (m && (post.unmasked || post.user_id === privateFor)) m.stats.endorsed++;
   }
   for (const c of comments) {
     const m = out.get(c.user_id);

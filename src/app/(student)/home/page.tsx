@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { ArrowRight, CalendarClock, Check, Clock, MapPin, Megaphone, Pin, Snowflake, Sparkles, Trophy, Users } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { CorePicks } from "@/components/CorePicks";
 import { EventCard } from "@/components/EventCard";
 import { MotivationStrip } from "@/components/MotivationStrip";
 import { Badge, Button, Card, DiscIcon, Kn, SectionHead, cx } from "@/components/ui";
@@ -84,6 +85,8 @@ export default function HomePage() {
         )}
 
         <MotivationStrip />
+
+        <CorePicks />
 
         {upcoming.length > 0 && (
           <section>
