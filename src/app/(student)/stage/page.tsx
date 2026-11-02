@@ -102,7 +102,7 @@ export default function StagePage() {
   const unmask = async (p: MaskPost) => {
     if (!confirm(`Unmask “${p.title}”? Your name will appear on it and it will show on your public profile.`)) return;
     if (!(await act(p.id, { action: "unmask" }))) return toast("Couldn't unmask", "error");
-    addContribution({ title: `Unmasked as the creator of “${p.title}”`, kind: "showcase", discipline: KINDS.find((k) => k.id === p.kind)?.disc, points: 15 });
+    addContribution({ title: `Unmasked as the creator of “${p.title}”`, kind: "showcase", discipline: KINDS.find((k) => k.id === p.kind)?.disc, points: 15, ref: `unmask:${p.id}` });
     toast("You unmasked! Take a bow 🎉", "level");
     load();
   };

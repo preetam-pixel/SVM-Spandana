@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, Clock, UserCheck, UserMinus, UserPlus, X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui";
 import { friendAction, type FriendAction } from "@/lib/people-client";
 import { useStore } from "@/lib/store";
@@ -18,6 +18,7 @@ export function FriendButton({ userId, name, status: initial, size = "sm", onCha
   const { toast } = useStore();
   const [status, setStatus] = useState(initial);
   const [busy, setBusy] = useState(false);
+  useEffect(() => setStatus(initial), [initial]); // follow fresh data from the parent
   const first = name.split(" ")[0];
 
   const run = async (action: FriendAction, done: string) => {

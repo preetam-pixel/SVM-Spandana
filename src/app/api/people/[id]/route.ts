@@ -17,7 +17,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     const row = await profileRow(id);
     if (!row) return NextResponse.json({ error: "Profile not found" }, { status: 404 });
 
-    const [mine, theirs] = await Promise.all([friendRows(me.id), friendRows(id)]);
+    const [mine, theirs] = await Promise.all([friendRows(me.id, { optional: true }), friendRows(id, { optional: true })]);
     const status = statusWith(me.id, id, mine);
     const myFriends = new Set(mine.filter((r) => r.status === "accepted").map((r) => otherSide(me.id, r)));
     const theirFriends = theirs.filter((r) => r.status === "accepted").map((r) => otherSide(id, r));

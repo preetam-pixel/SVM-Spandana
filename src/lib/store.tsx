@@ -96,12 +96,16 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const addContribution = useCallback(
     (c: Omit<Contribution, "date">) => {
       const date = new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short" });
-      update((p) => ({
-        ...p,
-        contributions: [{ ...c, date }, ...p.contributions],
-        stamps: c.discipline && !p.stamps.includes(c.discipline) ? [...p.stamps, c.discipline] : p.stamps,
-        streakWeeks: Math.max(1, p.streakWeeks),
-      }));
+      update((p) =>
+        c.ref && p.contributions.some((x) => x.ref === c.ref)
+          ? p // already counted (e.g. unmask, mask again, unmask)
+          : {
+              ...p,
+              contributions: [{ ...c, date }, ...p.contributions],
+              stamps: c.discipline && !p.stamps.includes(c.discipline) ? [...p.stamps, c.discipline] : p.stamps,
+              streakWeeks: Math.max(1, p.streakWeeks),
+            },
+      );
     },
     [update],
   );

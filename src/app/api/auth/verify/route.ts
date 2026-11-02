@@ -15,11 +15,11 @@ interface Body {
 }
 
 export async function POST(req: Request) {
-  const { phone: raw, code, mode, details } = (await req.json()) as Body;
-  const phone = normalizePhone(raw);
-  if (!phone || !/^\d{6}$/.test(String(code))) return NextResponse.json({ error: "Enter the 6-digit OTP." }, { status: 400 });
-
   try {
+    const { phone: raw, code, mode, details } = (await req.json()) as Body;
+    const phone = normalizePhone(raw);
+    if (!phone || !/^\d{6}$/.test(String(code))) return NextResponse.json({ error: "Enter the 6-digit OTP." }, { status: 400 });
+
     const sb = await supabaseAuth();
     // On success this writes the Supabase session cookies.
     const { data, error } = await sb.auth.verifyOtp({ phone, token: String(code), type: "sms" });

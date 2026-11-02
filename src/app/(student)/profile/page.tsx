@@ -12,6 +12,9 @@ import { useStore } from "@/lib/store";
 import type { Dept, DisciplineId, MaskPost } from "@/lib/types";
 import { uploadMedia } from "@/lib/upload-client";
 
+// Art form credited when a work of this kind is unmasked (same mapping as Mask Mode).
+const KIND_DISC: Partial<Record<MaskPost["kind"], DisciplineId>> = { photo: "photo", audio: "vocal", video: "video", text: "writing" };
+
 const input = "w-full rounded-xl border border-line bg-white px-3 py-2.5 text-sm outline-none focus:border-iris/60";
 
 function Section({ title, kn, editing, onEdit, onSave, onCancel, saving, children }: {
@@ -44,7 +47,7 @@ function Field({ label, value }: { label: string; value?: string | number }) {
 }
 
 export default function ProfilePage() {
-  const { account, profile, update, saveAccount, applyAccount, logout, toast } = useStore();
+  const { account, profile, update, addContribution, saveAccount, applyAccount, logout, toast } = useStore();
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
   const [editing, setEditing] = useState<"details" | "social" | "interests" | null>(null);
@@ -90,6 +93,7 @@ export default function ProfilePage() {
     const res = await fetch(`/api/posts/${w.id}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: reveal ? "unmask" : "remask" }) });
     if (!res.ok) return toast("Couldn't update", "error");
     setWorks((ws) => ws.map((x) => (x.id === w.id ? { ...x, unmasked: reveal ? `${account.name}` : undefined } : x)));
+    if (reveal) addContribution({ title: `Unmasked as the creator of “${w.title}”`, kind: "showcase", discipline: KIND_DISC[w.kind], points: 15, ref: `unmask:${w.id}` });
     toast(reveal ? "Unmasked: it now shows on your public profile 🎉" : "Masked again: it's anonymous now", reveal ? "level" : "info");
   };
 

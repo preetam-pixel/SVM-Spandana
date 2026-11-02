@@ -1,7 +1,7 @@
 # HANDOFF — SVM Spandana (read this first)
 
 This file lets another AI agent (or developer) continue the project without the original chat.
-Last updated: 2026-11-02. Author of the work so far: Claude (Claude Code) with the user (GitHub: `preetam-pixel`).
+Last updated: 2026-11-02 (second session: review + fixes). Author of the work so far: Claude (Claude Code) with the user (GitHub: `preetam-pixel`).
 
 ---
 
@@ -19,7 +19,7 @@ Last updated: 2026-11-02. Author of the work so far: Claude (Claude Code) with t
 - **Organizer Cockpit**: analytics (funnel, heatmap gaps, churn), Talent Radar, AI Event Planner.
 - **Live Stage**: audience reactions/applause meter.
 - **Auth**: register/login with **mobile OTP** (Supabase Auth + Twilio Verify), profile page with edit.
-- **NEW (uncommitted, in progress)**: People/friends, public profiles, SVM Team page, unmask improvements, clickable Constellation.
+- **People/friends**, public profiles (`/u/<id>`), **SVM Team** page, unmask / mask-again controls, clickable Constellation (committed in `b10a5ac`).
 
 Theme: classical **beige/brown/white**, Playfair Display headings, SVM logo, and a "Sangeeta Vrinda" artwork as the home page background.
 
@@ -28,8 +28,8 @@ Theme: classical **beige/brown/white**, Playfair Display headings, SVM logo, and
 ## 2. Location, repo, how to run
 
 - Local folder: `C:\Users\beast\OneDrive\Desktop\SVM_Spandana` (Windows 11, Node 25, npm 11, Git Bash + PowerShell).
-- GitHub: https://github.com/preetam-pixel/SVM-Spandana (branch `main`).
-- Last pushed commit: **`d14c48e`** "Supabase database, phone-OTP auth and Sangeeta Vrinda home page".
+- GitHub: https://github.com/preetam-pixel/SVM-Spandana (branch `main`; review fixes are on branch `claude/trusting-thompson-fzkh1k`, see section 5).
+- `main` head: **`b10a5ac`** "People, friends, public profiles, SVM Team page and unmask controls".
 - Run: `npm install` then `npm run dev` → http://localhost:3000
 - Typecheck: `npx tsc --noEmit` · Production build: `npx next build` (**stop the dev server and `rm -rf .next` before/after**; see Gotchas).
 
@@ -96,36 +96,35 @@ supabase/migrations/002_friends.sql   NEW friendships table (must be run on the 
 
 ## 5. Current state (IMPORTANT)
 
-### Done and pushed (`d14c48e`)
-Everything in sections 1–4 except the "NEW" items. It was tested end to end against the live Supabase project: demo login, profile saving, signed uploads, reactions, comments, unmask, delete, RLS blocking the anon key, and real SMS signup.
+### On `main` (`b10a5ac`)
+Everything in sections 1–4. The base app (`d14c48e`) was tested end to end against the live Supabase project: demo login, profile saving, signed uploads, reactions, comments, unmask, delete, RLS blocking the anon key, and real SMS signup. The People/friends/Team/Constellation work in `b10a5ac` was typechecked and partly tested in the browser.
 
-### Done locally, NOT committed, only partly tested (the work in progress when the session stopped)
-1. **Friends/People**: `api/people`, `api/people/[id]`, `api/friends`, `lib/server/people.ts`, `(student)/people/page.tsx`, `(student)/u/[id]/page.tsx`, `components/FriendButton.tsx`, `components/PublicProfileView.tsx`, `lib/people-client.ts`, types added in `lib/types.ts`.
-2. **Unmask improvements**: Unmask / "Mask again" buttons on your own post cards (`(student)/stage/page.tsx`) and in Profile → My works (`(student)/profile/page.tsx`). Unmasked creator names link to `/u/<id>`. API action `remask` was added in `api/posts/[id]`. `serializePost` exposes `creatorId` only when unmasked.
-3. **Constellation** (`components/Constellation.tsx`): tap any dot → confirmation card "Open X's profile?" → `/u/<id>` (demo students open `/u/s123`, "You" opens `/profile`). Real friends are drawn as gold-ringed named dots linked to "You". Minimum dot size and a larger tap area for phones. Backup `zoomToFit` after 1.5 s. Squads page passes `friends` (from `/api/friends`).
-4. **SVM Team page** `(student)/team/page.tsx` + **`src/lib/officials.ts`** (placeholders in `[square brackets]`; the page shows a reminder until they're replaced; photos go in `public/team/`).
-5. **Navigation** `(student)/layout.tsx`: sidebar = Pulse, Mask Mode, Squads, People (request badge), Guru, Passport, SVM Team, Profile. Mobile bottom bar = Pulse, Mask Mode, Squads, People, **More** (sheet: Guru, Passport, SVM Team, Profile, Organizer Cockpit, Live Stage). People/Team/Profile/u/* work before the Creative Spark is taken.
-6. `supabase/schema.sql` now includes the friendships table; `supabase/migrations/002_friends.sql` added.
+### Review + fixes on branch `claude/trusting-thompson-fzkh1k` (second session)
+Done in a cloud container **without** the `.env` keys, so verified with typecheck, production build, a unit test of the server sanitizers, and headless-Chromium runs of every page (desktop + mobile) against mocked `/api/*` responses. **Not yet re-tested against the live Supabase project.**
+1. **Friends before the migration**: `/api/people` and `/api/people/[id]` now work without the `friendships` table (everyone shows as "not friends"); `/api/friends` GET returns empty lists plus a `setup` note, and friend actions return 503 with "run `supabase/migrations/002_friends.sql`". The People page shows that note instead of breaking. (`FriendsNotSetUp` in `lib/server/people.ts`, handled by `failure()`.)
+2. **Bad profile data can't crash other people's pages**: `toCard`/`toPublic` sanitize the browser-written `state` (DNA numbers, art-form ids, `hiddenSpark`, level, dept). Before, one malformed profile crashed the whole People page for everyone.
+3. **Unmask points**: Unmask → Mask again → Unmask used to add +15 points each time. Contributions now take an optional `ref` (`unmask:<postId>`) and the store counts each ref once. Unmasking from Profile → My works now earns the same points as from Mask Mode.
+4. **People page**: after any friend action both the tabs and the Discover list refresh (no stale "Accept" button); stale search responses are ignored; Requests tab is split into "Waiting for you" and "Sent"; tabs no longer spin forever if `/api/friends` fails. `FriendButton` follows status changes from its parent.
+5. **Public profile on phones**: header no longer squeezes the name into a narrow column; points/stamps now show on mobile too. `/u/[id]` no longer refetches on every profile save.
+6. **Constellation**: "You" is pinned to the centre of the network (with only friends linked it used to drift off as a separate clump); friend names are drawn below their dot with a white halo, so they don't collide with "YOU".
+7. Small: auth routes return 400 (not an HTML 500) on malformed JSON; friend actions validate `action` and handle the both-sides-requested-at-once race; mobile "Exam Mode" pill no longer wraps; `@anthropic-ai/sdk` pinned to `^1.3.0` instead of `latest`.
 
-**Verified so far:** typecheck passed after each step until the very last edit. The SVM Team page renders. Constellation tap shows the confirmation card. The new mobile nav renders.
-**NOT yet verified:** the final Constellation edit (confirmation card restacked for phones) wasn't typechecked; a follow-up removal of the now-unused `X` import from `lucide-react` in `Constellation.tsx` was **not applied**. Remove it if lint complains. tsc doesn't fail on unused imports (no `noUnusedLocals`).
-
----
+`npm audit` reports a PostCSS advisory inside Next 15's bundled build tooling; the only fix is Next 16 (breaking), so it was left alone.
 
 ## 6. Next steps (in order)
 
-1. **Run the friends migration on the live DB** (the user must do this, or an agent with dashboard access): open the SQL editor link above, paste `supabase/migrations/002_friends.sql`, Run. **Until then `/api/people`, `/api/people/[id]` and `/api/friends` return 500 ("Could not find the table 'public.friendships'").** Verify with a service-role query `from('friendships').select('*').limit(1)`.
-2. `npx tsc --noEmit`; remove the unused `X` import in `src/components/Constellation.tsx`.
-3. **Test the new features** (dev server + browser):
+1. **Run the friends migration on the live DB** (the user must do this, or an agent with dashboard access): open the SQL editor link above, paste `supabase/migrations/002_friends.sql`, Run. Until then People/profiles work but friend requests are off (the People page says so). Verify with a service-role query `from('friendships').select('*').limit(1)`.
+2. **Merge the fixes branch** `claude/trusting-thompson-fzkh1k` into `main` (open a PR on GitHub).
+3. **Test against the live project** (dev server + browser, with the real `.env`):
    - `/people`: search, branch filter, Add friend → Requested → cancel; accept/decline from the Requests tab; Friends tab; Remove friend. Two real accounts exist (demo + "likhit"). For automated tests you can insert a pending row via the service role (other user → demo) and accept it through the API with the demo session (`POST /api/auth/demo` sets cookies).
    - `/u/<uuid>` for real users (email/USN hidden unless friends) and `/u/s12` (demo banner, no friend button).
-   - Mask Mode: Unmask from a post card → creator name links to the profile; "Mask again" works; Profile → My works Unmask/Mask.
-   - Constellation: tap dot → confirm → profile; friends appear as gold dots after accepting.
+   - Mask Mode: Unmask from a post card → creator name links to the profile; "Mask again" works; unmasking twice only earns points once; Profile → My works Unmask/Mask.
+   - Constellation: tap dot → confirm → profile; friends appear as gold dots around "You" after accepting.
    - Mobile "More" menu and the People badge.
-4. **Commit and push** (check `.env.example` has no keys; `.env` and `data/` are git-ignored). The commit message should end with: `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
-5. User fills **`src/lib/officials.ts`** with real coordinator names/contacts and adds photos under `public/team/`.
-6. **Deploy to Vercel**: import the GitHub repo, add the env vars from `.env`, deploy. Optionally set Supabase Auth → URL configuration Site URL to the Vercel URL.
-7. Judging prep: add Supabase test phone numbers (Twilio trial limit); the demo account button always works. The README has a 5-minute demo script.
+4. User fills **`src/lib/officials.ts`** with real coordinator names/contacts and adds photos under `public/team/` (the Team page shows a reminder while `[placeholders]` remain).
+5. **Deploy to Vercel**: import the GitHub repo, add the env vars from `.env`, deploy. Then set Supabase Auth → URL configuration → Site URL to the Vercel URL.
+6. Judging prep: add Supabase test phone numbers (Twilio trial limit); the demo account button always works. The README has a 5-minute demo script.
+7. Before committing anything: check `.env.example` has no keys (`.env` and `data/` are git-ignored). Commit messages end with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
 
 **Ideas not started (optional):** use the Sangeeta Vrinda artwork on auth pages; real-user counts in the Cockpit; notifications for unmask/friend events; chat between friends.
 
@@ -142,6 +141,7 @@ Everything in sections 1–4 except the "NEW" items. It was tested end to end ag
 - `useEffect(() => el.scrollIntoView())` crashes in new Chromium (it returns a Promise); always use braces in effects.
 - React StrictMode double-invokes state updaters, so don't put side effects (toasts) inside `setState` updaters.
 - Theme: dark-theme classes were bulk-mapped: `text-fg` (brown ink), `bg-fg/x` (brown tints), `.grad-bg` forces white text (unlayered CSS). A Tailwind v4 custom variant `wide:` (≥900px and aspect ≥5/4) is used on the home page.
+- `next build` can fail with `An error occurred in next/font … Cannot read properties of null (reading '1')` when Google Fonts doesn't answer; it's a network blip, just run the build again.
 - The browser-preview pane throttles animations (framer-motion `initial={{opacity:0}}` can look blank for a few seconds); real browsers are fine.
 
 ---

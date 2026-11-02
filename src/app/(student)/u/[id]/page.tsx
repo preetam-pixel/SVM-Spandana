@@ -14,12 +14,13 @@ interface Loaded { person: PublicProfile; status: FriendStatus; friends?: number
 export default function MemberProfilePage() {
   const { id } = useParams<{ id: string }>();
   const { account } = useStore();
+  const myId = account?.id;
   const router = useRouter();
   const [data, setData] = useState<Loaded | null>(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (account && id === account.id) {
+    if (myId && id === myId) {
       router.replace("/profile");
       return;
     }
@@ -29,11 +30,13 @@ export default function MemberProfilePage() {
       else setError("Profile not found");
       return;
     }
+    setData(null);
+    setError("");
     fetch(`/api/people/${id}`)
       .then(async (r) => ({ ok: r.ok, d: await r.json() }))
       .then(({ ok, d }) => (ok ? setData(d) : setError(d.error ?? "Profile not found")))
       .catch(() => setError("Couldn't load this profile"));
-  }, [id, account, router]);
+  }, [id, myId, router]);
 
   return (
     <div className="space-y-4">
