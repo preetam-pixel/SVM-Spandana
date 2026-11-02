@@ -1,16 +1,27 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { CalendarClock, Check, Clock, MapPin, Snowflake, Sparkles, Users } from "lucide-react";
+import { ArrowRight, CalendarClock, Check, Clock, MapPin, Megaphone, Pin, Snowflake, Sparkles, Trophy, Users } from "lucide-react";
 import Link from "next/link";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { EventCard } from "@/components/EventCard";
 import { Badge, Button, Card, DiscIcon, Kn, SectionHead, cx } from "@/components/ui";
 import { DAYS, DIM_MAP, DISCIPLINES, DISC_MAP, LADDER, TIMES } from "@/lib/data";
 import { archetype, points, recommend, type Rec } from "@/lib/engine";
+import { isPast } from "@/lib/club";
 import { useStore } from "@/lib/store";
+import type { Announcement, ClubEvent } from "@/lib/types";
 
 export default function HomePage() {
   const { profile, update, addContribution, toast } = useStore();
+  const [club, setClub] = useState<{ events: ClubEvent[]; announcements: Announcement[] } | null>(null);
+  useEffect(() => {
+    fetch("/api/events").then((r) => r.json()).then((d) => d.events && setClub(d)).catch(() => {});
+  }, []);
+  // Invites first, then events you're in, then the soonest.
+  const rank = (e: ClubEvent) => (e.invite?.status === "pending" && !e.mine ? 0 : e.mine ? 1 : 2);
+  const upcoming = (club?.events ?? []).filter((e) => !e.cancelled && !isPast(e)).sort((a, b) => rank(a) - rank(b) || a.startsAt - b.startsAt).slice(0, 4);
+  const notice = club?.announcements[0];
   // Stamps/joins are left out of the deps on purpose so cards don't jump around right after you join one.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const recs = useMemo(() => recommend(profile), [profile.dna, profile.freeSlots, profile.examMode, profile.level, profile.hiddenSpark]);
@@ -61,8 +72,32 @@ export default function HomePage() {
           </div>
         )}
 
+        {notice && (
+          <Link href="/events" className="flex items-start gap-3 rounded-2xl border border-gold/40 bg-sand/15 p-4 transition hover:bg-sand/25">
+            {notice.pinned ? <Pin size={18} className="mt-0.5 shrink-0 text-gold" /> : <Megaphone size={18} className="mt-0.5 shrink-0 text-iris" />}
+            <div className="min-w-0">
+              <div className="text-sm font-semibold">{notice.title}</div>
+              {notice.body && <div className="line-clamp-2 text-xs text-mute">{notice.body}</div>}
+            </div>
+          </Link>
+        )}
+
+        {upcoming.length > 0 && (
+          <section>
+            <SectionHead
+              title="Coming up at SVM"
+              kn="ಕಾರ್ಯಕ್ರಮಗಳು"
+              sub="Real events from the SVM core team. Every role counts: stage, backstage or audience."
+              right={<Link href="/events" className="flex shrink-0 items-center gap-1 text-sm font-semibold text-iris hover:underline">All events <ArrowRight size={14} /></Link>}
+            />
+            <div className="grid gap-4 sm:grid-cols-2">
+              {upcoming.map((e) => <EventCard key={e.id} e={e} compact />)}
+            </div>
+          </section>
+        )}
+
         <section>
-          <SectionHead title="Your Pulse" kn="ಸ್ಪಂದನ" sub="Ranked by your Creative DNA, free time and comfort level, with the reason for each" />
+          <SectionHead title="Your Pulse" kn="ಸ್ಪಂದನ" sub="Suggested for you by your Creative DNA, free time and comfort level, with the reason for each (demo activities)" />
           <div className="grid gap-4 sm:grid-cols-2">
             {feed.map((r, i) => <RecCard key={r.event.id} r={r} i={i} joined={profile.joined.includes(r.event.id)} onJoin={() => join(r)} />)}
           </div>
@@ -118,6 +153,11 @@ export default function HomePage() {
           </div>
           <p className="mt-3 text-xs text-mute">Try every art form once. Curiosity earns stamps, not just winning.</p>
         </Card>
+        <Link href="/achievements" className="card flex items-center gap-3 p-4 transition hover:bg-fg/[0.06]">
+          <Trophy className="text-gold" />
+          <div className="flex-1"><div className="text-sm font-semibold">Achievements & Wall of Fame</div><div className="text-xs text-mute">Badges, recognitions and leaderboards</div></div>
+          <ArrowRight size={16} className="text-mute" />
+        </Link>
         <Link href="/squads" className="card flex items-center gap-3 p-4 transition hover:bg-fg/[0.06]">
           <Users className="text-magenta" />
           <div className="flex-1"><div className="text-sm font-semibold">4 squads need your skills</div><div className="text-xs text-mute">AI matched you to open roles</div></div>

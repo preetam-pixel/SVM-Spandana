@@ -32,7 +32,7 @@ Spandana uses **Supabase**: hosted Postgres for data, Supabase Auth for phone-OT
 
 **1. Create the project.** At https://supabase.com, click **New project**, pick region **Mumbai (ap-south-1)**, and set a database password.
 
-**2. Create the tables.** Go to **SQL Editor → New query**, paste [supabase/schema.sql](supabase/schema.sql) and click **Run**. This creates `profiles`, `posts`, `comments` and `friendships` (with RLS on), the `add_reaction` function, the public `media` storage bucket, and seed showcase posts. *Already ran an older `schema.sql`?* Also run [supabase/migrations/002_friends.sql](supabase/migrations/002_friends.sql) once. Until you do, People and profiles still work but friend requests stay off.
+**2. Create the tables.** Go to **SQL Editor → New query**, paste [supabase/schema.sql](supabase/schema.sql) and click **Run**. This creates `profiles`, `posts`, `comments`, `friendships`, `events`, `event_signups`, `event_invites`, `recognitions` and `announcements` (all with RLS on), the `add_reaction` function, the public `media` storage bucket, seed showcase posts and three sample upcoming events. *Already ran an older `schema.sql`?* Run the files in [supabase/migrations](supabase/migrations) you haven't run yet, in order (`002_friends.sql`, `003_events_achievements.sql`). Until you do, the rest of the app keeps working and those features show what to run.
 
 **3. Turn on phone OTP.** Go to **Authentication → Sign In / Providers → Phone** and enable it.
 - **Real SMS:** choose **Twilio Verify**. Get the Account SID and Auth Token from https://console.twilio.com, and the Verify Service SID from **Verify → Services → Create new**. A Twilio trial only texts numbers you've verified in Twilio.
@@ -40,9 +40,17 @@ Spandana uses **Supabase**: hosted Postgres for data, Supabase Auth for phone-OT
 
 **4. Add the keys.** Copy the URL and keys from **Project Settings → API** into `.env` (see [.env.example](.env.example)), then restart `npm run dev`.
 
-**Demo account:** "Explore with a demo account" on the home page signs in to a shared demo student (email + password, created automatically on first use). No phone number is needed.
+**5. Make the first SVM core member.** Register in the app with your mobile number, then run this in the SQL editor:
 
-**Security model:** browsers never talk to the tables directly. All reads and writes go through Next.js API routes that check the Supabase session and use the service-role key server-side. Uploads go straight from the browser to Storage through one-time signed URLs that the server issues after checking file type and size.
+```sql
+update public.profiles set role = 'core' where phone = '+919876543210';  -- your number
+```
+
+Core members can post events and notices, invite members, mark attendance and give recognitions. They can promote other members from their profile page ("Make core member").
+
+**Demo accounts:** "Explore with a demo account" on the home page signs in to a shared demo student; "as an SVM core member" signs in to a shared demo organiser. Both are created automatically on first use and need no phone number. The demo organiser can't promote anyone, and demo accounts are kept off the leaderboards.
+
+**Security model:** browsers never talk to the tables directly. All reads and writes go through Next.js API routes that check the Supabase session (and the core-member role for organiser actions) and use the service-role key server-side. Uploads go straight from the browser to Storage through one-time signed URLs that the server issues after checking file type and size.
 
 ### Deploy to Vercel
 
@@ -57,10 +65,13 @@ Spandana uses **Supabase**: hosted Postgres for data, Supabase Auth for phone-OT
 | Intelligent Talent Discovery | **Creative Spark** — 5 micro-games (Rhythm Echo tap test, Pitch Match via real mic pitch detection, Frame-It rule-of-thirds crop, AI-scored Finish-the-Verse, Vibe Check) → **Creative DNA** radar across 6 dimensions + a **hidden spark** (strongest skill you *didn't* claim) with campus percentile | `/spark` |
 | Personalized Engagement | **Pulse feed** — explainable recommendations ("why you're seeing this") ranked by DNA fit, **timetable free slots**, comfort level and passport novelty | `/home` |
 | Inclusive Participation | **Mask Mode** — upload photos, music, reels and writing anonymously, AI-moderated kind comments, no downvotes, **unmask when ready**. **Confidence Ladder** Explorer → Crew → Collaborator → Performer → Mentor | `/stage`, `/passport` |
-| Participation & Motivation | **Micro-gigs** (20–60 min backstage roles), **Exam Mode** (freezes streaks, short sessions only), **Kala Passport** stamps for trying each of 9 art forms, **no global leaderboard** (it discourages beginners) | `/home`, `/passport` |
+| Participation & Motivation | **Micro-gigs** (20–60 min backstage roles), **Exam Mode** (freezes streaks, short sessions only), **Kala Passport** stamps for trying each of 9 art forms | `/home`, `/passport` |
+| Achievements | **22 badges** (bronze, silver, gold) across Explorer, Showcase, Events, Community and Organiser: First Step, Showed Up, Backstage Hero, In the Spotlight, Star of the Night, Kind Voice, Unmasked, Navarasa… with progress bars and unlock toasts. **Leaderboards** are opt-out, count backstage work and kindness as much as the stage, and include a *this month* board so newcomers can top it. Masked works count toward your own badges but never show publicly | `/achievements` |
+| Recognition by SVM | Core members **star** people at events and give **recognitions** (Star Performer, Backstage Hero, Rising Star…) with a personal note. They appear on the **Wall of Fame**, the member's profile and their Passport | `/achievements`, `/u/<id>` |
+| Running events (core members) | **Post events** with a call for roles (Singers ×4, Anchor ×1, Stage crew ×5…) and a poster; members sign up for a role. **Find people** ranks members who'd fit by Creative DNA, art forms they love and free time, with one-tap **invites**. **WhatsApp share**, sign-up list with CSV export, **check-in code** for verified attendance, **notice board** | `/events`, `/events/<id>` |
 | Community Building | **AI Squad Builder** — cross-discipline teams balancing skill, shared free time, branch diversity and a beginner/expert mix; live **Creative Constellation** network graph | `/squads` |
 | Talent Development | **Guru** AI mentor chat, AI **4-week learning paths**, **Guru–Shishya** peer-mentor matching by shared free slots | `/guru` |
-| Recognition | **Cultural Portfolio** — verified contributions, backstage credited equal to stage, indicative AICTE/VTU activity-point mapping, save as PDF | `/passport` |
+| Recognition | **Cultural Portfolio** — events verified by check-in, SVM recognitions, backstage credited equal to stage, indicative AICTE/VTU activity-point mapping, save as PDF | `/passport` |
 | Event & Activity Intelligence | **AI Event Planner** — roles (incl. first-timer roles), timeline, bilingual promo; **turnout prediction** model; **targeted invites** to matching Explorers free at that slot | `/cockpit` → AI Event Planner |
 | Engagement Analytics | Growth trend, participation **funnel**, dept × year **heatmap with gap detection**, art-form mix, **churn-risk** regulars, AI weekly insights | `/cockpit` |
 | Hidden talent outreach | **Talent Radar** — students with high DNA scores who have *never* participated, with personal invite | `/cockpit` → Talent Radar |
@@ -74,16 +85,19 @@ Spandana uses **Supabase**: hosted Postgres for data, Supabase Auth for phone-OT
 4. **Pulse** → top pick is a 45-min percussion circle in her only free slot, with reasons. Tap *I'm in* → points, passport stamp, level up. Toggle **Exam Mode**.
 5. **Mask Mode** → compose a tune on the pad, post anonymously, watch reactions arrive, **Unmask**.
 6. **Squads** → *Build my squad* on the Kannada rap video → AI names the squad, *Join* → gold links light up on the constellation.
-7. **Organizer Cockpit** → heatmap finds the 3rd-year Civil/Mech gap, Talent Radar finds dormant rhythm talent, AI Event Planner predicts turnout and drafts the plan with a Kannada promo line.
-8. **Live Stage** → applause meter for first-time performers.
+7. **Organiser view** → from the home page choose *as an SVM core member* → **Post an event** with roles to fill → **Find people** → invite the top match → show the check-in code → on the sign-up list mark someone present and ⭐ star them → their badge and recognition appear on the **Wall of Fame**.
+8. **Organizer Cockpit** → heatmap finds the 3rd-year Civil/Mech gap, Talent Radar finds dormant rhythm talent, AI Event Planner predicts turnout and drafts the plan with a Kannada promo line.
+9. **Live Stage** → applause meter for first-time performers.
 
 ## Tech
 
 Next.js 15 (App Router) · TypeScript · Tailwind CSS v4 · Framer Motion · Recharts · react-force-graph · Web Audio API (drum synth, tone generation, autocorrelation pitch detection) · Claude API (`@anthropic-ai/sdk`) / Gemini REST with offline fallback.
 
 - `src/lib/engine.ts` — explainable recommendation scoring, squad builder, Creative DNA, analytics, turnout model
+- `src/lib/achievements.ts` — badge definitions; `src/lib/server/stats.ts` computes them from real activity
+- `src/lib/server/club.ts` — events, roles, and "find people" member matching
 - `src/lib/data.ts` — deterministic seeded campus (320 students, events, quests, showcase)
 - `src/app/api/ai/route.ts` — AI gateway (Claude → Gemini → offline) with circuit breaker
 - `src/lib/audio.ts` — Web Audio toolkit
 
-**Honesty note:** the 320 campus students, analytics history and seeded showcase posts are **simulated demo data** (labelled in the UI). Accounts, profiles, uploads, reactions and comments are real and stored in Supabase.
+**Honesty note:** the 320 campus students, analytics history and seeded showcase posts are **simulated demo data** (labelled in the UI). Accounts, profiles, uploads, reactions, comments, friends, events, sign-ups, attendance, recognitions and achievements are real and stored in Supabase. The personalised *Your Pulse* suggestions still come from the simulated activity list; real SVM events appear above them.

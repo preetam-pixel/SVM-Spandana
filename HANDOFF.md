@@ -1,7 +1,7 @@
 # HANDOFF — SVM Spandana (read this first)
 
 This file lets another AI agent (or developer) continue the project without the original chat.
-Last updated: 2026-11-02 (second session: review + fixes). Author of the work so far: Claude (Claude Code) with the user (GitHub: `preetam-pixel`).
+Last updated: 2026-11-02 (second session: review + fixes, then events / recognition / achievements). Author of the work so far: Claude (Claude Code) with the user (GitHub: `preetam-pixel`).
 
 ---
 
@@ -20,6 +20,8 @@ Last updated: 2026-11-02 (second session: review + fixes). Author of the work so
 - **Live Stage**: audience reactions/applause meter.
 - **Auth**: register/login with **mobile OTP** (Supabase Auth + Twilio Verify), profile page with edit.
 - **People/friends**, public profiles (`/u/<id>`), **SVM Team** page, unmask / mask-again controls, clickable Constellation (committed in `b10a5ac`).
+- **Events for SVM core members** (`/events`): post events with a call for roles + poster, members sign up per role, "Find people" suggestions + invites, WhatsApp share, sign-up list (CSV), check-in code for verified attendance, stars, notice board. Core role = `profiles.role = 'core'`.
+- **Recognition & achievements** (`/achievements`): 22 badges computed server-side from real activity, Wall of Fame (recognitions from core), leaderboards (opt-out; all-time badge points + last 30 days), unlock toasts, verified activity on the Passport.
 
 Theme: classical **beige/brown/white**, Playfair Display headings, SVM logo, and a "Sangeeta Vrinda" artwork as the home page background.
 
@@ -61,13 +63,17 @@ src/app/
   (student)/home stage squads guru passport profile   Main student pages
   (student)/people/        NEW: directory, Friends, Requests tabs
   (student)/u/[id]/        NEW: public profile (real uuid → API; "s123" → demo student from seed data)
-  (student)/team/          NEW: SVM Team page (data from src/lib/officials.ts)
+  (student)/team/          SVM Team page (data from src/lib/officials.ts)
+  (student)/events/        Events list + notices + invites; events/new (post/edit, core only); events/[id] (sign up, check in, share; organiser tools for core)
+  (student)/achievements/  Badges, Wall of Fame, leaderboards
   api/ai                   AI gateway (tasks: verse, path, guru, squad, plan, kind, insight)
   api/auth/{send-otp,verify,logout,demo}   Supabase Auth phone OTP + demo login
   api/me                   GET current account; PATCH profile fields / engagement state / avatarPath
   api/uploads              Issues signed upload URLs (Supabase Storage bucket "media")
   api/posts, api/posts/[id]  Mask Mode feed; actions react/comment/unmask/remask; DELETE own post
-  api/people, api/people/[id], api/friends   NEW: directory, public profile, friend actions
+  api/people, api/people/[id], api/friends   Directory, public profile (+ badges, recognitions; PATCH role by core), friend actions
+  api/events, api/events/[id]   List/create; detail, ?suggest=1, PATCH/DELETE (core); POST actions signup/leave/checkin/respond, core: invite/attend/star/unstar
+  api/announcements, api/recognitions, api/achievements, api/leaderboard, api/notifications
 src/lib/
   data.ts        Seed/sim data: 320 synthetic STUDENTS, EVENTS, QUESTS, MASK_POSTS, DIMS, DISCIPLINES, LADDER, DEMO_PROFILE
   engine.ts      Recommendations, squad builder, DNA/archetype, analytics, turnout model
@@ -77,20 +83,26 @@ src/lib/
   server/{auth,db,posts,people}.ts   Server helpers (currentUser, otpMessage, profile mapping, friendship helpers)
   upload-client.ts     Browser upload via signed URL
   people-client.ts     NEW: friendAction(), demoProfile() for synthetic students
-  officials.ts         NEW: SVM coordinators data (PLACEHOLDERS for the user to fill)
+  officials.ts         SVM coordinators data (PLACEHOLDERS for the user to fill)
+  achievements.ts      Badge definitions + evaluate(stats); club.ts  shared event helpers (kinds, role presets, IST dates, WhatsApp text)
+  server/club.ts       Event rows ↔ ClubEvent, role parsing/validation, suggestFor() member matching, recognitions/notices
+  server/stats.ts      collectStats(): achievement facts per member from the DB (public = unmasked works only; private adds own masked works)
+  server/setup.ts      isMissing()/rowsOrEmpty(): tables from later migrations read as empty; SetupNeeded errors → 503 with the SQL file to run
 src/components/  ui.tsx (Button, Card, Badge, Avatar, DiscIcon…), Constellation.tsx, DnaRadar.tsx, FriendButton.tsx (NEW), PublicProfileView.tsx (NEW), Logo.tsx, Toaster.tsx
 src/middleware.ts      Refreshes Supabase session cookies
 supabase/schema.sql    Full schema (profiles, posts, comments, friendships, add_reaction fn, media bucket, seed posts)
-supabase/migrations/002_friends.sql   NEW friendships table (must be run on the live DB; see below)
+supabase/migrations/002_friends.sql   friendships table
+supabase/migrations/003_events_achievements.sql   role column, events, event_signups, event_invites, recognitions, announcements + 3 seed events
 ```
 
 **Data model (Supabase Postgres, RLS enabled with NO policies; all access via server routes using the service role):**
 - `profiles` (id = auth.users.id, phone, name, usn, email, dept, year, bio, instagram, youtube, avatar, avatar_path, state jsonb = Creative DNA/stamps/joined/contributions…, created_at)
 - `posts` (Mask Mode; user_id null = seeded; `unmasked` text set when the creator reveals; `creatorId` is only exposed to clients when unmasked)
 - `comments`, function `add_reaction(post, kind)`, storage bucket `media` (public, 50 MB)
-- `friendships` (requester, addressee, status pending|accepted; unique per pair) — **NEW**
+- `friendships` (requester, addressee, status pending|accepted; unique per pair)
+- `profiles.role` ('member' | 'core'); `events` (roles jsonb = call for participants, checkin_code, cancelled); `event_signups` (role_id, note, attended); `event_invites` (role_id, status); `recognitions` (event_id set = an event "star"); `announcements`
 
-**Privacy rules implemented:** phone is never shown to other users; email + USN are visible only to friends; masked posts never reveal the creator.
+**Privacy rules implemented:** phone is never shown to other users; email + USN are visible only to friends; masked posts never reveal the creator, and badges/leaderboards shown to others only count unmasked works. Check-in codes, sign-up notes and attendance are visible to core members only. The demo core account can't change roles; demo accounts are excluded from leaderboards.
 
 ---
 
@@ -113,20 +125,18 @@ Done in a cloud container **without** the `.env` keys, so verified with typechec
 
 ## 6. Next steps (in order)
 
-1. **Run the friends migration on the live DB** (the user must do this, or an agent with dashboard access): open the SQL editor link above, paste `supabase/migrations/002_friends.sql`, Run. Until then People/profiles work but friend requests are off (the People page says so). Verify with a service-role query `from('friendships').select('*').limit(1)`.
-2. **Merge the fixes branch** `claude/trusting-thompson-fzkh1k` into `main` (open a PR on GitHub).
-3. **Test against the live project** (dev server + browser, with the real `.env`):
-   - `/people`: search, branch filter, Add friend → Requested → cancel; accept/decline from the Requests tab; Friends tab; Remove friend. Two real accounts exist (demo + "likhit"). For automated tests you can insert a pending row via the service role (other user → demo) and accept it through the API with the demo session (`POST /api/auth/demo` sets cookies).
-   - `/u/<uuid>` for real users (email/USN hidden unless friends) and `/u/s12` (demo banner, no friend button).
-   - Mask Mode: Unmask from a post card → creator name links to the profile; "Mask again" works; unmasking twice only earns points once; Profile → My works Unmask/Mask.
-   - Constellation: tap dot → confirm → profile; friends appear as gold dots around "You" after accepting.
-   - Mobile "More" menu and the People badge.
-4. User fills **`src/lib/officials.ts`** with real coordinator names/contacts and adds photos under `public/team/` (the Team page shows a reminder while `[placeholders]` remain).
-5. **Deploy to Vercel**: import the GitHub repo, add the env vars from `.env`, deploy. Then set Supabase Auth → URL configuration → Site URL to the Vercel URL.
-6. Judging prep: add Supabase test phone numbers (Twilio trial limit); the demo account button always works. The README has a 5-minute demo script.
-7. Before committing anything: check `.env.example` has no keys (`.env` and `data/` are git-ignored). Commit messages end with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
+1. **Run the migrations on the live DB** (the user must do this, or an agent with dashboard access): SQL editor → paste and run `supabase/migrations/002_friends.sql` (if not done yet), then `supabase/migrations/003_events_achievements.sql`. Until then those features show what to run; nothing else breaks.
+2. **Make the first core member:** `update public.profiles set role = 'core' where phone = '+91…';` (their registered number). They can promote others in the app (profile → "Make core member").
+3. **Merge the branch** `claude/trusting-thompson-fzkh1k` into `main` (open a PR on GitHub).
+4. **Smoke test against the live project** with the real `.env`: demo core login → post an event → Find people → invite; demo student → sign up → check in with the code; core → star → Wall of Fame. Also friends (`/people`) and Mask Mode unmask.
+5. User fills **`src/lib/officials.ts`** with real coordinator names/contacts and adds photos under `public/team/`.
+6. **Deploy to Vercel**: import the GitHub repo, add the env vars from `.env`, deploy. Then set Supabase Auth → URL configuration → Site URL to the Vercel URL.
+7. Judging prep: add Supabase test phone numbers (Twilio trial limit); both demo buttons always work. The README has a demo script.
+8. Before committing anything: check `.env.example` has no keys (`.env` and `data/` are git-ignored). Commit messages end with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
 
-**Ideas not started (optional):** use the Sangeeta Vrinda artwork on auth pages; real-user counts in the Cockpit; notifications for unmask/friend events; chat between friends.
+**How the events/achievements work was tested (second session, no live keys):** the schema and migration were applied to a real local Postgres 16 (fresh install, upgrade from the previous schema, and re-runs). The app ran against a small test-only stand-in for Supabase's REST/auth/storage APIs, with 66 API checks (permissions, capacity, invites, check-in rate limit, stars, achievements, Mask Mode privacy, leaderboards, roles, cancel/edit/delete), checks for a DB without migration 003, and browser flows on desktop and mobile. That stand-in isn't in the repo; the real Supabase project still needs the step 4 smoke test.
+
+**Ideas not started (optional):** connect the Organizer Cockpit analytics to real events/sign-ups (it's still simulated); feed real events into the personalised "Your Pulse" ranking; push/SMS reminders before events; peer-to-peer kudos; use the Sangeeta Vrinda artwork on auth pages; chat between friends.
 
 ---
 
