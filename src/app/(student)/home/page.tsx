@@ -5,6 +5,7 @@ import { ArrowRight, CalendarClock, Check, Clock, MapPin, Megaphone, Pin, Snowfl
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { EventCard } from "@/components/EventCard";
+import { MotivationStrip } from "@/components/MotivationStrip";
 import { Badge, Button, Card, DiscIcon, Kn, SectionHead, cx } from "@/components/ui";
 import { DAYS, DIM_MAP, DISCIPLINES, DISC_MAP, LADDER, TIMES } from "@/lib/data";
 import { archetype, points, recommend, type Rec } from "@/lib/engine";
@@ -81,6 +82,8 @@ export default function HomePage() {
             </div>
           </Link>
         )}
+
+        <MotivationStrip />
 
         {upcoming.length > 0 && (
           <section>

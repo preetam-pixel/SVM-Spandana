@@ -123,6 +123,16 @@ Done in a cloud container **without** the `.env` keys, so verified with typechec
 
 `npm audit` reports a PostCSS advisory inside Next 15's bundled build tooling; the only fix is Next 16 (breaking), so it was left alone.
 
+### Third session (local, live Supabase): club achievements and opportunities
+- **Migration 004** (`supabase/migrations/004_club_opportunities.sql`) is **applied on the live DB**: `club_trophies`, `opportunities` (VTU Youth Festival seeded with 25 AIU-style events, dates TBA), `opportunity_interests`. Migrations 002 and 003 are also applied.
+- **SVM Club** page `/club`: 9 club-wide milestones computed live (`milestones()` in `lib/server/clubdata.ts`) and the trophy cabinet (core add/delete via `/api/club`, `/api/club/[id]`; tagged members get the "Represented SVM" badge).
+- **Opportunities** page `/opportunities`: core post/edit/delete; members toggle "I'm interested" per event; "Good fit for you" via `isGoodFit()` in `lib/opportunities.ts`; core sees who's interested (no phone numbers).
+- New badges: Fest Ready, All-Rounder, Represented SVM (`stats.interests`, `stats.trophies`). Pulse shows `components/MotivationStrip.tsx`. Nav adds Opportunities and SVM Club.
+- `lib/officials.ts` now has the real coordinators (faculty: Balachandra, Girish; students: Vineet, Gautami, Syed Usman, Madhu H); departments, contacts and photos still to add.
+- First real core member: **Preetam K** (`profiles.role = 'core'`).
+- Tested live: opportunity interest toggles, core-only actions, trophy with members, milestones, badges; test data removed.
+- Still to do: core fills in VTU Youth Festival dates and link, adds SVM's real past trophies, and coordinator contact details.
+
 ## 6. Next steps (in order)
 
 1. **Run the migrations on the live DB** (the user must do this, or an agent with dashboard access): SQL editor → paste and run `supabase/migrations/002_friends.sql` (if not done yet), then `supabase/migrations/003_events_achievements.sql`. Until then those features show what to run; nothing else breaks.

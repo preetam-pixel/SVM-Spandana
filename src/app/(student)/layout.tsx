@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { Activity, BookOpenCheck, CalendarDays, Contact, Menu, Radio, Sparkles, Stamp, Trophy, UserRound, Users, UsersRound, VenetianMask, X } from "lucide-react";
+import { Activity, BookOpenCheck, CalendarDays, Contact, Flag, Medal, Menu, Radio, Sparkles, Stamp, Trophy, UserRound, Users, UsersRound, VenetianMask, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -20,7 +20,9 @@ const PRIMARY = [
 ];
 const SECONDARY = [
   { href: "/squads", label: "Squads", icon: Users },
+  { href: "/opportunities", label: "Opportunities", icon: Flag },
   { href: "/achievements", label: "Achievements", icon: Trophy },
+  { href: "/club", label: "SVM Club", icon: Medal },
   { href: "/guru", label: "Guru", icon: Sparkles },
   { href: "/passport", label: "Passport", icon: Stamp },
   { href: "/team", label: "SVM Team", icon: Contact },
@@ -32,7 +34,7 @@ const EXTRA = [
 ];
 
 // Pages that work before the Creative Spark is taken (and everything under them).
-const OPEN_BEFORE_SPARK = ["/profile", "/team", "/people", "/u", "/events", "/achievements"];
+const OPEN_BEFORE_SPARK = ["/profile", "/team", "/people", "/u", "/events", "/achievements", "/opportunities", "/club"];
 const under = (path: string, href: string) => path === href || path.startsWith(`${href}/`);
 const isActive = (path: string, href: string) => under(path, href) || (href === "/people" && path.startsWith("/u/"));
 

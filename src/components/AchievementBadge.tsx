@@ -2,14 +2,14 @@
 
 import {
   Award, Brush, CalendarCheck, Compass, Crown, Flame, Gem, Handshake, Heart, Images, Lock, Megaphone, MessageCircleHeart,
-  MicVocal, PartyPopper, Repeat, Sparkles, Star, Ticket, UserPlus, Users, VenetianMask, Wrench, type LucideIcon,
+  MicVocal, PartyPopper, Flag, Repeat, Rocket, Sparkles, Star, Ticket, Trophy, UserPlus, Users, VenetianMask, Wrench, type LucideIcon,
 } from "lucide-react";
 import { ACHIEVEMENT_MAP, TIER_COLOR, TIER_POINTS, type Progress } from "@/lib/achievements";
 import { cx } from "./ui";
 
 const ICONS: Record<string, LucideIcon> = {
   Award, Brush, CalendarCheck, Compass, Crown, Flame, Gem, Handshake, Heart, Images, Megaphone, MessageCircleHeart,
-  MicVocal, PartyPopper, Repeat, Sparkles, Star, Ticket, UserPlus, Users, VenetianMask, Wrench,
+  MicVocal, PartyPopper, Flag, Repeat, Rocket, Sparkles, Star, Ticket, Trophy, UserPlus, Users, VenetianMask, Wrench,
 };
 
 /** Round medal for an achievement, ringed in its tier colour (bronze / silver / gold). */

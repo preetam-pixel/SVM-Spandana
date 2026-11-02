@@ -21,6 +21,19 @@ export class EventsNotSetUp extends SetupNeeded {
   }
 }
 
+export class ClubNotSetUp extends SetupNeeded {
+  constructor() {
+    super("Club trophies and opportunities need a one-time database update: run supabase/migrations/004_club_opportunities.sql in the Supabase SQL editor.");
+  }
+}
+
+/** Rows from a query; a missing table becomes ClubNotSetUp. */
+export async function clubRows<T>(q: PromiseLike<{ data: unknown; error: DbError }>): Promise<T[]> {
+  const { data, error } = await q;
+  if (error) throw isMissing(error) ? new ClubNotSetUp() : error;
+  return (data ?? []) as T[];
+}
+
 /** Rows from a query, or [] when its table doesn't exist yet (other errors still throw). */
 export async function rowsOrEmpty<T>(q: PromiseLike<{ data: unknown; error: DbError }>): Promise<T[]> {
   const { data, error } = await q;
