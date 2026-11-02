@@ -26,13 +26,29 @@ skips a failing provider so the demo never stalls. Copy `.env.example` → `.env
 
 Every AI response shows a small badge (Claude AI / Gemini AI / Offline AI) so judges can see what's live.
 
-### Accounts, OTP and database
+### Database, authentication and storage (Supabase)
 
-- **Register / Login with mobile OTP** (`/register`, `/login`). Indian 10-digit numbers; codes expire in 5 minutes, 5 tries max, 5 sends per 15 minutes.
-- **Demo mode (default):** with no SMS provider configured, the OTP is shown on screen and printed in the server console.
-- **Real SMS:** set the three `TWILIO_*` variables in `.env` (Twilio Verify; free trial texts numbers you've verified in the Twilio console).
-- **Demo account:** "Explore with a demo account" on the home page, or log in with `90000 00001`.
-- **Database:** SQLite file at `data/spandana.db` (Node's built-in `node:sqlite`, no install). Tables: `users`, `sessions`, `otps`, `posts`, `comments`. Uploaded photos, music and reels are stored in `data/uploads/` and streamed via `/api/media/…` with seeking support. Delete the `data/` folder to start fresh; it re-seeds on next start.
+Spandana uses **Supabase**: hosted Postgres for data, Supabase Auth for phone-OTP login (JWT sessions in secure cookies), and Supabase Storage for uploaded photos, music and reels.
+
+**1. Create the project.** At https://supabase.com, click **New project**, pick region **Mumbai (ap-south-1)**, and set a database password.
+
+**2. Create the tables.** Go to **SQL Editor → New query**, paste [supabase/schema.sql](supabase/schema.sql) and click **Run**. This creates `profiles`, `posts` and `comments` (with RLS on), the `add_reaction` function, the public `media` storage bucket, and seed showcase posts.
+
+**3. Turn on phone OTP.** Go to **Authentication → Sign In / Providers → Phone** and enable it.
+- **Real SMS:** choose **Twilio Verify**. Get the Account SID and Auth Token from https://console.twilio.com, and the Verify Service SID from **Verify → Services → Create new**. A Twilio trial only texts numbers you've verified in Twilio.
+- **Judging without SMS:** in the same panel, add **Test Phone Numbers and OTPs**, e.g. `919000000002=123456`. Logging in with that number accepts code `123456` and sends no SMS.
+
+**4. Add the keys.** Copy the URL and keys from **Project Settings → API** into `.env` (see [.env.example](.env.example)), then restart `npm run dev`.
+
+**Demo account:** "Explore with a demo account" on the home page signs in to a shared demo student (email + password, created automatically on first use). No phone number is needed.
+
+**Security model:** browsers never talk to the tables directly. All reads and writes go through Next.js API routes that check the Supabase session and use the service-role key server-side. Uploads go straight from the browser to Storage through one-time signed URLs that the server issues after checking file type and size.
+
+### Deploy to Vercel
+
+1. Push to GitHub, then at https://vercel.com click **Add New → Project** and import the repo.
+2. Under **Environment Variables**, add everything from your `.env`: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, and `GEMINI_API_KEY` or `ANTHROPIC_API_KEY`.
+3. Click **Deploy**. Every push to `main` redeploys automatically.
 
 ## What's inside — mapped to the problem statement
 
@@ -70,4 +86,4 @@ Next.js 15 (App Router) · TypeScript · Tailwind CSS v4 · Framer Motion · Rec
 - `src/app/api/ai/route.ts` — AI gateway (Claude → Gemini → offline) with circuit breaker
 - `src/lib/audio.ts` — Web Audio toolkit
 
-**Honesty note:** student records, analytics history and Mask Mode reactions on your own posts are **simulated demo data** (labelled in the UI). Profile state is stored in the browser's localStorage.
+**Honesty note:** the 320 campus students, analytics history and seeded showcase posts are **simulated demo data** (labelled in the UI). Accounts, profiles, uploads, reactions and comments are real and stored in Supabase.

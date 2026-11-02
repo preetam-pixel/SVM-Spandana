@@ -1,93 +1,14 @@
-import fs from "node:fs";
-import path from "node:path";
-import { DEMO_PROFILE, MASK_POSTS } from "@/lib/data";
+import { DEMO_PROFILE } from "@/lib/data";
+import { admin } from "@/lib/supabase/server";
 import type { Account, Dept, Profile } from "@/lib/types";
 
-// Built-in SQLite (Node 22.5+). Loaded via getBuiltinModule so the bundler leaves it alone.
-const { DatabaseSync } = process.getBuiltinModule("node:sqlite") as typeof import("node:sqlite");
-type DB = InstanceType<typeof DatabaseSync>;
+export const DEMO_EMAIL = "demo@svm-spandana.app";
+export const DEMO_PASSWORD = process.env.DEMO_PASSWORD || "svm-spandana-demo-2026";
 
-export const DATA_DIR = path.join(process.cwd(), "data");
-export const UPLOAD_DIR = path.join(DATA_DIR, "uploads");
-export const DEMO_PHONE = "+919000000001";
-
-const g = globalThis as unknown as { __svmDb?: DB };
-
-export function db(): DB {
-  if (g.__svmDb) return g.__svmDb;
-  fs.mkdirSync(UPLOAD_DIR, { recursive: true });
-  const d = new DatabaseSync(path.join(DATA_DIR, "spandana.db"));
-  d.exec(`
-    PRAGMA journal_mode = WAL;
-    PRAGMA foreign_keys = ON;
-    CREATE TABLE IF NOT EXISTS users (
-      id TEXT PRIMARY KEY, phone TEXT UNIQUE NOT NULL, name TEXT NOT NULL,
-      usn TEXT DEFAULT '', email TEXT DEFAULT '', dept TEXT DEFAULT 'CSE', year INTEGER DEFAULT 1,
-      bio TEXT DEFAULT '', instagram TEXT DEFAULT '', youtube TEXT DEFAULT '', avatar TEXT DEFAULT '',
-      profile TEXT NOT NULL DEFAULT '{}', created_at INTEGER NOT NULL
-    );
-    CREATE TABLE IF NOT EXISTS otps (
-      phone TEXT PRIMARY KEY, code_hash TEXT, expires_at INTEGER, attempts INTEGER DEFAULT 0,
-      sent_count INTEGER DEFAULT 0, window_start INTEGER DEFAULT 0
-    );
-    CREATE TABLE IF NOT EXISTS sessions (
-      token TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, expires_at INTEGER NOT NULL
-    );
-    CREATE TABLE IF NOT EXISTS posts (
-      id TEXT PRIMARY KEY, user_id TEXT REFERENCES users(id) ON DELETE CASCADE, alias TEXT NOT NULL,
-      kind TEXT NOT NULL, title TEXT NOT NULL, body TEXT, media TEXT, mime TEXT, notes TEXT, seed INTEGER,
-      heart INTEGER DEFAULT 0, fire INTEGER DEFAULT 0, wow INTEGER DEFAULT 0, clap INTEGER DEFAULT 0,
-      unmasked TEXT, created_at INTEGER NOT NULL
-    );
-    CREATE TABLE IF NOT EXISTS comments (
-      id INTEGER PRIMARY KEY AUTOINCREMENT, post_id TEXT NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
-      user_id TEXT, body TEXT NOT NULL, created_at INTEGER NOT NULL
-    );
-  `);
-  seed(d);
-  g.__svmDb = d;
-  return d;
-}
-
-function seed(d: DB) {
-  const hasPosts = (d.prepare("SELECT COUNT(*) AS n FROM posts").get() as { n: number }).n > 0;
-  if (!hasPosts) {
-    const now = Date.now();
-    const insert = d.prepare(
-      `INSERT INTO posts (id, user_id, alias, kind, title, body, notes, seed, heart, fire, wow, clap, unmasked, created_at)
-       VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    );
-    const comment = d.prepare("INSERT INTO comments (post_id, body, created_at) VALUES (?, ?, ?)");
-    for (const p of MASK_POSTS) {
-      const at = now - p.hoursAgo * 3_600_000;
-      insert.run(p.id, p.alias, p.kind, p.title, p.text ?? null, p.notes ? JSON.stringify(p.notes) : null, p.seed ?? null,
-        p.reactions.heart, p.reactions.fire, p.reactions.wow, p.reactions.clap, p.unmasked ?? null, at);
-      p.comments.forEach((c, i) => comment.run(p.id, c, at + (i + 1) * 600_000));
-    }
-  }
-  const demo = d.prepare("SELECT id FROM users WHERE phone = ?").get(DEMO_PHONE);
-  if (!demo) {
-    const { name, dept, year, ...rest } = DEMO_PROFILE;
-    d.prepare(
-      `INSERT INTO users (id, phone, name, usn, email, dept, year, bio, instagram, profile, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    ).run("u_demo", DEMO_PHONE, name, "2KE24CS011", "ananya.k@example.com", dept, year,
-      "Writes poems in the margins of lab records. Recently discovered she can keep a beat.", "ananya.writes", JSON.stringify(rest), Date.now());
-  }
-}
-
-interface UserRow {
-  id: string; phone: string; name: string; usn: string; email: string; dept: string; year: number;
-  bio: string; instagram: string; youtube: string; avatar: string; profile: string; created_at: number;
-}
-
-export function toAccount(r: UserRow): Account {
-  const stored = JSON.parse(r.profile || "{}") as Partial<Profile>;
-  const profile: Profile = { ...DEMO_PROFILE, ...EMPTY_STATE, ...stored, name: r.name, dept: r.dept as Dept, year: r.year };
-  return {
-    id: r.id, phone: r.phone, name: r.name, usn: r.usn, email: r.email, dept: r.dept as Dept, year: r.year,
-    bio: r.bio, instagram: r.instagram, youtube: r.youtube, avatar: r.avatar, createdAt: r.created_at, profile,
-  };
+export interface ProfileRow {
+  id: string; phone: string | null; name: string; usn: string; email: string; dept: string; year: number;
+  bio: string; instagram: string; youtube: string; avatar: string; avatar_path: string | null;
+  state: Partial<Profile> | null; created_at: string;
 }
 
 // Fresh accounts start with no DNA and nothing joined.
@@ -96,12 +17,51 @@ const EMPTY_STATE: Partial<Profile> = {
   sparkDone: false, declared: [], hiddenSpark: null, level: 0, stamps: [], joined: [], quests: [], contributions: [], myPosts: [], streakWeeks: 0,
 };
 
-export function userById(id: string): Account | null {
-  const r = db().prepare("SELECT * FROM users WHERE id = ?").get(id) as UserRow | undefined;
-  return r ? toAccount(r) : null;
+export function toAccount(r: ProfileRow): Account {
+  const profile: Profile = { ...DEMO_PROFILE, ...EMPTY_STATE, ...(r.state ?? {}), name: r.name, dept: r.dept as Dept, year: r.year };
+  return {
+    id: r.id, phone: r.phone ?? "", name: r.name, usn: r.usn, email: r.email, dept: r.dept as Dept, year: r.year,
+    bio: r.bio, instagram: r.instagram, youtube: r.youtube, avatar: r.avatar, createdAt: new Date(r.created_at).getTime(), profile,
+  };
 }
 
-export function userByPhone(phone: string): Account | null {
-  const r = db().prepare("SELECT * FROM users WHERE phone = ?").get(phone) as UserRow | undefined;
-  return r ? toAccount(r) : null;
+export async function profileRow(id: string): Promise<ProfileRow | null> {
+  const { data, error } = await admin().from("profiles").select("*").eq("id", id).maybeSingle();
+  if (error) throw error;
+  return data as ProfileRow | null;
+}
+
+export async function accountById(id: string): Promise<Account | null> {
+  const row = await profileRow(id);
+  return row ? toAccount(row) : null;
+}
+
+export async function phoneRegistered(phone: string): Promise<boolean> {
+  const { count, error } = await admin().from("profiles").select("id", { count: "exact", head: true }).eq("phone", phone);
+  if (error) throw error;
+  return (count ?? 0) > 0;
+}
+
+/** Creates the public demo student (email + password login) on first use. */
+export async function ensureDemoUser(): Promise<void> {
+  const sb = admin();
+  const { data: existing } = await sb.from("profiles").select("id").eq("email", DEMO_EMAIL).maybeSingle();
+  if (existing) return;
+
+  let userId: string | undefined;
+  const created = await sb.auth.admin.createUser({ email: DEMO_EMAIL, password: DEMO_PASSWORD, email_confirm: true, user_metadata: { name: DEMO_PROFILE.name } });
+  if (created.data.user) userId = created.data.user.id;
+  else {
+    // Auth user exists but its profile row is missing: find it.
+    const { data } = await sb.auth.admin.listUsers({ page: 1, perPage: 200 });
+    userId = data.users.find((u) => u.email === DEMO_EMAIL)?.id;
+  }
+  if (!userId) throw new Error(`Couldn't create demo user: ${created.error?.message}`);
+
+  const { name, dept, year, ...state } = DEMO_PROFILE;
+  const { error } = await sb.from("profiles").upsert({
+    id: userId, phone: null, name, dept, year, email: DEMO_EMAIL, usn: "",
+    bio: "Writes poems in the margins of lab records. Recently discovered she can keep a beat.", instagram: "ananya.writes", state,
+  });
+  if (error) throw error;
 }

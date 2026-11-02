@@ -50,7 +50,7 @@ export default function LoginPage() {
           <PhoneInput value={phone} onChange={setPhone} autoFocus />
           {error && <p className="text-sm text-magenta">{error}</p>}
           <Button size="lg" className="w-full" disabled={!/^[6-9]\d{9}$/.test(phone) || busy}>{busy ? "Sending OTP…" : <>Send OTP <ArrowRight size={18} /></>}</Button>
-          <p className="text-center text-xs text-mute">Demo account: 90000 00001</p>
+          <p className="text-center text-xs text-mute">No account yet? Try the demo account from the home page.</p>
         </form>
       ) : (
         <OtpStep

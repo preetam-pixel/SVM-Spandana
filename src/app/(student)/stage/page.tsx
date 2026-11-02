@@ -8,6 +8,7 @@ import { askAI } from "@/lib/ai";
 import { noteFreq, playNotes } from "@/lib/audio";
 import { useStore } from "@/lib/store";
 import type { DisciplineId, MaskPost } from "@/lib/types";
+import { uploadMedia } from "@/lib/upload-client";
 
 const UNMASK_AT = 10;
 const REACT = [
@@ -21,27 +22,11 @@ type Kind = "photo" | "audio" | "video" | "text";
 const KINDS: { id: Kind; label: string; icon: typeof Camera; accept: string; hint: string; disc: DisciplineId }[] = [
   { id: "photo", label: "Photo / Art", icon: Camera, accept: "image/*", hint: "JPG, PNG or WebP · up to 10 MB", disc: "photo" },
   { id: "audio", label: "Music", icon: Music, accept: "audio/*", hint: "MP3, M4A, WAV or OGG · up to 20 MB", disc: "vocal" },
-  { id: "video", label: "Reel / Video", icon: Clapperboard, accept: "video/*", hint: "MP4, WebM or MOV · up to 60 MB", disc: "video" },
+  { id: "video", label: "Reel / Video", icon: Clapperboard, accept: "video/*", hint: "MP4, WebM or MOV · up to 50 MB", disc: "video" },
   { id: "text", label: "Writing", icon: Feather, accept: "", hint: "Poem, shayari, ಕವನ, story", disc: "writing" },
 ];
 
 const total = (p: MaskPost) => p.reactions.heart + p.reactions.fire + p.reactions.wow + p.reactions.clap;
-
-/** Upload with progress (fetch has no upload progress events). */
-function upload(form: FormData, onProgress: (pct: number) => void): Promise<{ ok: boolean; data: { post?: MaskPost; error?: string } }> {
-  return new Promise((resolve) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open("POST", "/api/posts");
-    xhr.upload.onprogress = (e) => e.lengthComputable && onProgress(Math.round((e.loaded / e.total) * 100));
-    xhr.onload = () => {
-      let data = {};
-      try { data = JSON.parse(xhr.responseText); } catch { data = { error: "Upload failed" }; }
-      resolve({ ok: xhr.status < 300, data });
-    };
-    xhr.onerror = () => resolve({ ok: false, data: { error: "Network error during upload" } });
-    xhr.send(form);
-  });
-}
 
 export default function StagePage() {
   const { addContribution, toast } = useStore();
@@ -74,15 +59,25 @@ export default function StagePage() {
   const clear = () => { setFile(null); setPreview(null); setTitle(""); setText(""); setProgress(null); };
 
   const post = async () => {
-    const form = new FormData();
-    form.append("kind", kind);
-    form.append("title", title);
-    form.append("body", text);
-    if (file && kind !== "text") form.append("file", file);
-    setProgress(0);
-    const { ok, data } = await upload(form, setProgress);
+    let media: { path: string; mime: string } | undefined;
+    if (kind !== "text" && file) {
+      setProgress(35);
+      const up = await uploadMedia(file, kind);
+      if ("error" in up) {
+        setProgress(null);
+        return toast(up.error, "error");
+      }
+      media = up;
+    }
+    setProgress(90);
+    const res = await fetch("/api/posts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ kind, title, body: text, path: media?.path, mime: media?.mime }),
+    });
+    const data = (await res.json()) as { post?: MaskPost; error?: string };
     setProgress(null);
-    if (!ok || !data.post) return toast(data.error ?? "Couldn't post", "error");
+    if (!res.ok || !data.post) return toast(data.error ?? "Couldn't post", "error");
     setPosts((ps) => [data.post!, ...(ps ?? [])]);
     addContribution({ title: `Shared “${data.post.title}” in Mask Mode`, kind: "showcase", discipline: KINDS.find((k) => k.id === kind)!.disc, points: 20 });
     toast(`Posted anonymously as “${data.post.alias}”`, "info");
@@ -175,7 +170,7 @@ export default function StagePage() {
             {kind !== "text" && <input value={text} onChange={(e) => setText(e.target.value)} maxLength={300} placeholder="Caption (optional)" className="rounded-xl border border-line bg-white px-3 py-2.5 text-sm outline-none focus:border-iris/60" />}
           </div>
           {progress !== null && (
-            <div className="mt-3"><div className="h-2 overflow-hidden rounded-full bg-fg/10"><div className="h-full grad-bg transition-all" style={{ width: `${progress}%` }} /></div><div className="mt-1 text-xs text-mute">Uploading… {progress}%</div></div>
+            <div className="mt-3"><div className="h-2 overflow-hidden rounded-full bg-fg/10"><div className="h-full grad-bg transition-all" style={{ width: `${progress}%` }} /></div><div className="mt-1 text-xs text-mute">{progress < 90 ? "Uploading to secure storage…" : "Publishing…"}</div></div>
           )}
           <div className="mt-3 flex justify-end"><Button disabled={!canPost} onClick={post}><VenetianMask size={16} /> Post anonymously</Button></div>
         </Card>

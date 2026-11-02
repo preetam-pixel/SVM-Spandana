@@ -1,52 +1,61 @@
 import { NextResponse } from "next/server";
-import { currentUser, newId } from "@/lib/server/auth";
-import { db } from "@/lib/server/db";
+import { currentUser, failure } from "@/lib/server/auth";
 import { serializePost, type PostRow } from "@/lib/server/posts";
-import { UploadError, saveUpload } from "@/lib/server/uploads";
+import { MEDIA_BUCKET, admin } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 
 export async function GET() {
-  const user = await currentUser();
-  const rows = db().prepare("SELECT * FROM posts ORDER BY created_at DESC LIMIT 100").all() as unknown as PostRow[];
-  const cs = db().prepare("SELECT post_id, body FROM comments ORDER BY created_at").all() as { post_id: string; body: string }[];
-  const byPost = new Map<string, string[]>();
-  for (const c of cs) byPost.set(c.post_id, [...(byPost.get(c.post_id) ?? []), c.body]);
-  return NextResponse.json({ posts: rows.map((r) => serializePost(r, user?.id ?? null, byPost.get(r.id) ?? [])) });
+  try {
+    const user = await currentUser();
+    const sb = admin();
+    const { data: rows, error } = await sb.from("posts").select("*").order("created_at", { ascending: false }).limit(100);
+    if (error) throw error;
+    const ids = (rows ?? []).map((r) => r.id);
+    const { data: cs, error: cErr } = ids.length
+      ? await sb.from("comments").select("post_id, body").in("post_id", ids).order("created_at")
+      : { data: [], error: null };
+    if (cErr) throw cErr;
+    const byPost = new Map<string, string[]>();
+    for (const c of cs ?? []) byPost.set(c.post_id, [...(byPost.get(c.post_id) ?? []), c.body]);
+    return NextResponse.json({ posts: (rows as PostRow[]).map((r) => serializePost(r, user?.id ?? null, byPost.get(r.id) ?? [])) });
+  } catch (e) {
+    return failure(e);
+  }
 }
 
 const ADJ = ["Velvet", "Quiet", "Neon", "Silver", "Monsoon", "Midnight", "Paper", "Golden", "Hidden", "Cosmic", "Amber", "Saffron"];
 const NOUN = ["Tabla", "Comet", "Peacock", "Veena", "Lantern", "Raga", "Sparrow", "Ink", "Echo", "Kite", "Mridanga", "Lotus"];
-const LIMIT_MB = { photo: 10, audio: 20, video: 60 } as const;
+const PREFIX = { photo: "image/", audio: "audio/", video: "video/" } as const;
 
 export async function POST(req: Request) {
-  const user = await currentUser();
-  if (!user) return NextResponse.json({ error: "Please log in to post" }, { status: 401 });
-  const form = await req.formData();
-  const kind = String(form.get("kind") ?? "");
-  const title = String(form.get("title") ?? "").trim().slice(0, 80) || "Untitled";
-  const body = String(form.get("body") ?? "").trim().slice(0, 1500);
-  const file = form.get("file");
+  try {
+    const user = await currentUser();
+    if (!user) return NextResponse.json({ error: "Please log in to post" }, { status: 401 });
+    const { kind, title: rawTitle, body: rawBody, path, mime } = (await req.json()) as { kind: string; title?: string; body?: string; path?: string; mime?: string };
+    const title = String(rawTitle ?? "").trim().slice(0, 80) || "Untitled";
+    const body = String(rawBody ?? "").trim().slice(0, 1500);
 
-  let media: { url: string; mime: string } | null = null;
-  if (kind === "text") {
-    if (body.length < 3) return NextResponse.json({ error: "Write something first" }, { status: 400 });
-  } else if (kind === "photo" || kind === "audio" || kind === "video") {
-    if (!(file instanceof File)) return NextResponse.json({ error: "Choose a file to upload" }, { status: 400 });
-    try {
-      media = await saveUpload(file, [kind === "photo" ? "image" : kind], LIMIT_MB[kind]);
-    } catch (e) {
-      if (e instanceof UploadError) return NextResponse.json({ error: e.message }, { status: 400 });
-      throw e;
+    let media: string | null = null;
+    if (kind === "text") {
+      if (body.length < 3) return NextResponse.json({ error: "Write something first" }, { status: 400 });
+    } else if (kind === "photo" || kind === "audio" || kind === "video") {
+      // The file was uploaded directly to storage; only accept paths in this user's own folder.
+      if (!path?.startsWith(`${user.id}/`) || !mime?.startsWith(PREFIX[kind])) return NextResponse.json({ error: "Upload the file first" }, { status: 400 });
+      media = admin().storage.from(MEDIA_BUCKET).getPublicUrl(path).data.publicUrl;
+    } else {
+      return NextResponse.json({ error: "Unknown post type" }, { status: 400 });
     }
-  } else {
-    return NextResponse.json({ error: "Unknown post type" }, { status: 400 });
-  }
 
-  const alias = `${ADJ[Math.floor(Math.random() * ADJ.length)]} ${NOUN[Math.floor(Math.random() * NOUN.length)]}`;
-  const id = newId("p");
-  db().prepare("INSERT INTO posts (id, user_id, alias, kind, title, body, media, mime, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
-    .run(id, user.id, alias, kind, title, body || null, media?.url ?? null, media?.mime ?? null, Date.now());
-  const row = db().prepare("SELECT * FROM posts WHERE id = ?").get(id) as unknown as PostRow;
-  return NextResponse.json({ post: serializePost(row, user.id, []) });
+    const alias = `${ADJ[Math.floor(Math.random() * ADJ.length)]} ${NOUN[Math.floor(Math.random() * NOUN.length)]}`;
+    const { data, error } = await admin()
+      .from("posts")
+      .insert({ user_id: user.id, alias, kind, title, body: body || null, media, media_path: media ? path : null, mime: media ? mime : null })
+      .select("*")
+      .single();
+    if (error) throw error;
+    return NextResponse.json({ post: serializePost(data as PostRow, user.id, []) });
+  } catch (e) {
+    return failure(e);
+  }
 }
